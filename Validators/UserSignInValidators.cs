@@ -1,6 +1,12 @@
-﻿namespace E_Commerce.Validators
+﻿using FluentValidation;
+using E_Commerce.Dtos.UserDto;
+
+public class UserSignInValidator : AbstractValidator<UserSignInDto>
 {
-    public class UserSignInDto
+    public UserSignInValidator()
     {
+        RuleFor(x => x.EmailAddress)
+            .NotEmpty().WithMessage("Email address is required")
+            .EmailAddress().WithMessage("Invalid email format");
     }
 }
