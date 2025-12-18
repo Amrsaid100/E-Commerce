@@ -1,5 +1,4 @@
-﻿
-using E_Commerce.Entities;
+﻿using E_Commerce.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Drawing;
 
@@ -18,7 +17,10 @@ namespace E_Commerce.DataContext
         public DbSet<Category> Categories { get; set; }
 
 
-        protected override void OnConfiguring() { };
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            // You can configure the context here if needed, or leave it empty.
+        }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

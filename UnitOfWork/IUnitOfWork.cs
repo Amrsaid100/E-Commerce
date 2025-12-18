@@ -5,7 +5,7 @@ namespace E_Commerce.UnitOfWork
 {
     public interface IUnitOfWork
     {   
-        public IGenericRepo<Cart> Carts { get;}
+        public ICartRepo Carts { get;}
         
         public IGenericRepo<CartItem> CartItems { get; }
 
@@ -15,7 +15,7 @@ namespace E_Commerce.UnitOfWork
 
         public IGenericRepo<OrderItem> OrderItems { get; }
 
-        public IGenericRepo<Product> Products { get; }
+        public IProductRepo Products { get; }
         public IGenericRepo<ProductImage> productImage { get; }
         public IGenericRepo<ProductVariant> ProductVariants { get;}
         public IGenericRepo<User> Users { get; }

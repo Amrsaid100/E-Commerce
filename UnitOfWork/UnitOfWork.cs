@@ -9,9 +9,9 @@ namespace E_Commerce.UnitOfWork
     {
         private readonly EcommerceDbContext context;
 
-        private IGenericRepo<Cart> _Cart;
+        private ICartRepo _Cart;
         private IGenericRepo<User> _User;
-        private IGenericRepo<Product> _Product;
+        private IProductRepo _Product;
         private IGenericRepo<Order> _Order;
         private IGenericRepo<Category> _Category;
         private IGenericRepo<CartItem> _CartItem;
@@ -24,12 +24,12 @@ namespace E_Commerce.UnitOfWork
             this.context = context;
         }
 
-        public IGenericRepo<Cart> Carts
+        public ICartRepo Carts
         {
             get
             {
                 if (_Cart == null)
-                    _Cart = new GenericRepo<Cart>(context);
+                    _Cart = new CartRepo(context);
                 return _Cart;
             }
         }
@@ -67,12 +67,12 @@ namespace E_Commerce.UnitOfWork
                 return _OrderItem;
             }
         }
-        public IGenericRepo<Product> Products 
+        public IProductRepo Products 
         {
             get
             {
                 if (_Product == null)
-                    _Product = new GenericRepo<Product>(context);
+                    _Product = new ProductRepo(context);
                 return _Product;
             }
         }

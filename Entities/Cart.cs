@@ -7,9 +7,10 @@ namespace E_Commerce.Entities
     {
         [Key]
         public int Id { get; set; }
+        public  List<CartItem> Items { get; set; }
+        public decimal TotalPrice { get; set; }
         [ForeignKey("User")]
-        public Guid? UserId { get; set; }
+        public int UserId { get; set; }
         public User User { get; set; }
-        public virtual IEnumerable<CartItem> Items { get; set; }
     }
 }

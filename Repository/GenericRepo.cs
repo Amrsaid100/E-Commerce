@@ -1,5 +1,6 @@
 ﻿
 using E_Commerce.DataContext;
+using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Repository
 {
@@ -14,29 +15,29 @@ namespace E_Commerce.Repository
 
         public GenericRepo() { 
         }
-        public Task AddAsync(T obj)
+        public async Task AddAsync(T obj)
         {
-            throw new NotImplementedException();
+            await context.Set<T>().AddAsync(obj);
         }
 
-        public Task DeleteAsync(T obj)
+        public async Task DeleteAsync(T obj)
         {
-            throw new NotImplementedException();
+            context.Set<T>().Remove(obj);
         }
 
-        public Task<List<T>> GetAllAsync()
+        public async Task<List<T>> GetAllAsync()
         {
-            throw new NotImplementedException();
+            return await context.Set<T>().ToListAsync();
         }
 
-        public Task<T> GetByIdAsync(int id)
+        public async Task<T> GetByIdAsync(int id)
         {
-            throw new NotImplementedException();
+            return await context.Set<T>().FindAsync(id);
         }
 
-        public Task UpdatdeAsync(T obj)
+        public async Task UpdatdeAsync(T obj)
         {
-            throw new NotImplementedException();
+            context.Set<T>().Update(obj);
         }
     }
 }

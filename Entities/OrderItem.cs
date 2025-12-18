@@ -17,10 +17,10 @@ namespace E_Commerce.Entities
         public decimal UnitePrice { get; set; }
         [Required]
         [ForeignKey("Order")]
-        public Guid OrderId { get; set; }
+        public int OrderId { get; set; }
         public Order Order { get; set; }
         [Required]
         [ForeignKey("ProductVariant")]
-        public virtual ProductVariant ProductVariant { get; set; }
+        public  ProductVariant ProductVariant { get; set; }
     }
 }
