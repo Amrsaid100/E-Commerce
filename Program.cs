@@ -1,4 +1,5 @@
-
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using E_Commerce.DataContext;
 using E_Commerce.Repository;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,8 @@ namespace E_Commerce
             // Add services to the container.
 
             builder.Services.AddControllers();
+            builder.Services.AddFluentValidationAutoValidation();
+            builder.Services.AddValidatorsFromAssemblyContaining<Program>();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
@@ -36,7 +39,7 @@ namespace E_Commerce
             app.UseAuthorization();
 
 
-            app.MapControllers();
+            app.MapControllers();  
 
             app.Run();
         }
