@@ -10,8 +10,8 @@ namespace E_Commerce.Entities
         [Required]
         [ForeignKey("Product")]
         public int ProductId { get; set; }
-        public Product Product { get; set; }
+        public Product? Product { get; set; }
         [Required]
-        public string ImageUrl { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

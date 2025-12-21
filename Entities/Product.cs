@@ -9,14 +9,14 @@ namespace E_Commerce.Entities
         public int Id { get; set; }
         [Required]
         [MaxLength(200)]
-        public string Description { get; set; }
+        public string? Description { get; set; }
         [Required]
         [ForeignKey("Category")]
         public int CategoryId { get; set; }
 
         public decimal Price { get; set; }
-        public List<ProductVariant> Variants { get; set; }
+        public List<ProductVariant>? Variants { get; set; }
         public Category Category { get; set; }
-        public List<ProductImage> Images { get; set; }
+        public List<ProductImage>? Images { get; set; }
     }
 }

@@ -11,6 +11,10 @@ namespace E_Commerce.Entities
         [MaxLength(100)]
         public string Name { get; set; }
 
-        public virtual List<Product> Products { get; set; }
+        
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        public virtual List<Product> Products { get; set; } = new List<Product>();
     }
 }

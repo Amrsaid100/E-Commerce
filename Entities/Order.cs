@@ -9,19 +9,19 @@ namespace E_Commerce.Entities
         public int OrderId { get; set; }
         public int UserId { get; set; }
         [Required]
-        public string Email { get; set; }
+        public string? Email { get; set; }
         [Required]
-        public string City { get; set; }
+        public string? City { get; set; }
         [Required]
-        public string Street { get; set; }
+        public string? Street { get; set; }
         [Required]
-        public string PhoneNumber { get; set; }
+        public string? PhoneNumber { get; set; }
         [Required]
         public decimal TotalAmount { get; set; }
-        public List<OrderItem> Items { get; set; }
+        public List<OrderItem>? Items { get; set; }
         [Required]
         [ForeignKey("User")]
-        public User User { get; set; }
+        public User? User { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     }

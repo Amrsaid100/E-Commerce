@@ -10,7 +10,7 @@ namespace E_Commerce.Entities
         public int Id { get; set; }
         public int ProductVariantId { get; set; }
         [Required]
-        public string ProductName { get; set; }
+        public string? ProductName { get; set; }
         [Required]
         public int Quantity { get; set; }
         [Required]
@@ -18,9 +18,9 @@ namespace E_Commerce.Entities
         [Required]
         [ForeignKey("Order")]
         public int OrderId { get; set; }
-        public Order Order { get; set; }
+        public Order? Order { get; set; }
         [Required]
         [ForeignKey("ProductVariant")]
-        public  ProductVariant ProductVariant { get; set; }
+        public  ProductVariant? ProductVariant { get; set; }
     }
 }

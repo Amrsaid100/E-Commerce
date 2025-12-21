@@ -2,6 +2,9 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using E_Commerce.DataContext;
 using E_Commerce.Repository;
+using E_Commerce.UnitOfWork;
+using E_Commerce.Services.ProductService;
+using E_Commerce.Services.CategoryService;
 using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce
@@ -13,18 +16,34 @@ namespace E_Commerce
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
-
             builder.Services.AddControllers();
+
+            // FluentValidation
             builder.Services.AddFluentValidationAutoValidation();
             builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+            // Swagger/OpenAPI
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            builder.Services.AddDbContext<EcommerceDbContext>(op =>
+
+            // Database Context
+            builder.Services.AddDbContext<EcommerceDbContext>(options =>
             {
-                op.UseSqlServer(builder.Configuration.GetConnectionString("EcommerceConnectionString"));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("EcommerceConnectionString"));
             });
-            builder.Services.AddScoped(typeof(IGenericRepo<>),typeof(GenericRepo<>));
+
+            // Repositories
+            builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
+            builder.Services.AddScoped<IProductRepo, ProductRepo>();
+            builder.Services.AddScoped<ICartRepo, CartRepo>();
+
+            // Unit of Work
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
+
+            // Services
+            builder.Services.AddScoped<IProductService, ProdService>();
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -38,8 +57,7 @@ namespace E_Commerce
 
             app.UseAuthorization();
 
-
-            app.MapControllers();  
+            app.MapControllers();
 
             app.Run();
         }
