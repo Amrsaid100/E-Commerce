@@ -4,11 +4,11 @@ namespace E_Commerce.Services.ProductService
 {
     public interface IProductService
     {
-        Task AddProductAsync (NewProductDto productDto);
+        Task AddProductAsync(NewProductDto productDto);
         Task RemoveProductAsync(int productId);
-        Task UpdateProductAsync (int ProductId , ProductDto NewProduct);
-        Task<ProductDto> GetProudctBySearchAsync (string Search);
+        Task UpdateProductAsync(int ProductId, ProductDto NewProduct);
+        Task<ProductDto?> GetProductBySearchAsync(string Search);
 
-        Task<List<ProductDto>> GetAllProductByCategoryNameAsync (string CategoryName);
+        Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string CategoryName);
     }
 }

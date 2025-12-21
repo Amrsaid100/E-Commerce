@@ -6,5 +6,6 @@ namespace E_Commerce.Dtos.UserDto
     {
         [Required,EmailAddress]
         public string EmailAddress { get; set; }
+        public string Password { get; set; }
     }
 }

@@ -11,7 +11,7 @@ namespace E_Commerce.Dtos.UserDto
         public string Description { get; set; }
         public decimal Price { get; set; }  
         public string Image { get; set; }
-        public char size { get; set; }
+        public String size { get; set; }
         public int quantity { get; set; }
     }
 }

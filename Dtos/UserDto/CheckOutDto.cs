@@ -17,7 +17,7 @@ namespace E_Commerce.Dtos.UserDto
         [Required]
         public string Building { get; set; }
         [Required]
-        public string Appartment { get; set; }
+        public string Apartment { get; set; }
 
     }
 }

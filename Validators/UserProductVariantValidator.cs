@@ -1,8 +1,12 @@
-﻿using FluentValidation;
-using E_Commerce.Dtos.UserDto;
+﻿using E_Commerce.Dtos.UserDto;
+using FluentValidation;
+using System.Linq;
 
 public class UserProductVariantValidator : AbstractValidator<UserProductVariantDto>
 {
+    //  static list
+    private static readonly List<string> AllowedSizes = new List<string> { "S", "M", "L", "XL", "XXL","XXXL" };
+
     public UserProductVariantValidator()
     {
         RuleFor(x => x.ProductVariantId)
@@ -17,11 +21,12 @@ public class UserProductVariantValidator : AbstractValidator<UserProductVariantD
 
         RuleFor(x => x.Image)
             .MaximumLength(250).WithMessage("Image URL must not exceed 250 characters")
-            .When(x => !string.IsNullOrEmpty(x.Image)); 
+            .When(x => !string.IsNullOrEmpty(x.Image));
 
+        //Use The Static List
         RuleFor(x => x.size)
-            .Must(c => "SMLXL".Contains(c))
-            .WithMessage("Size must be one of the following: S, M, L, X, XL,XXL");
+            .Must(size => AllowedSizes.Contains(size))
+            .WithMessage("Size must be one of: S, M, L, XL, XXL,XXXL");
 
         RuleFor(x => x.quantity)
             .GreaterThanOrEqualTo(0).WithMessage("Quantity must be 0 or more");
