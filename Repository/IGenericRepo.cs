@@ -1,4 +1,5 @@
-﻿namespace E_Commerce.Repository
+﻿
+namespace E_Commerce.Repository
 {
     public interface IGenericRepo<T> where T : class
     {
@@ -7,5 +8,6 @@
         Task<T> GetByIdAsync(int id);
         Task<List<T>> GetAllAsync();
         Task UpdatdeAsync(T obj);
+        Task FirstOrDefaultAsync(Func<object, bool> value);
     }
 }
