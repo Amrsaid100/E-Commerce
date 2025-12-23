@@ -4,24 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Repository
 {
-    public class CartRepo: GenericRepo<Cart>,ICartRepo
+    public class CartRepo : GenericRepo<Cart>, ICartRepo
     {
-        private readonly EcommerceDbContext context;
-
-        public CartRepo(EcommerceDbContext context)
+        public CartRepo(EcommerceDbContext context) : base(context)
         {
-            this.context = context;
         }
-        
+
         public async Task<Cart> GetByUserIdAsync(int userId)
         {
-            var Cart= await context.Carts
-                .Include(c => c.Items)
-                    .ThenInclude(i => i.ProductVariant)
-                        .ThenInclude(pv => pv.Product)
-                            .FirstOrDefaultAsync(c => c.UserId == userId);
-
-            return Cart;
+            return await context.Set<Cart>()
+                                .Include(c => c.Items)
+                                .FirstOrDefaultAsync(c => c.UserId == userId);
         }
     }
 }

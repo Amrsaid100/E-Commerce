@@ -1,4 +1,5 @@
 ﻿using E_Commerce.Entities;
+using E_Commerce.Repositories.CategoryRepository;
 using E_Commerce.Repository;
 
 namespace E_Commerce.UnitOfWork
@@ -9,14 +10,14 @@ namespace E_Commerce.UnitOfWork
 
         public IGenericRepo<CartItem> CartItems { get; }
 
-        public IGenericRepo<Category> Categories { get; }
+        ICategoryRepo Categories { get; }
 
         public IGenericRepo<Order> Orders { get; }
 
         public IGenericRepo<OrderItem> OrderItems { get; }
 
         public IProductRepo Products { get; }
-
+       
         public IGenericRepo<ProductImage> ProductImages { get; }
 
         public IGenericRepo<ProductVariant> ProductVariants { get; }

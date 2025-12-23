@@ -1,20 +1,17 @@
-﻿
-using E_Commerce.DataContext;
+﻿using E_Commerce.DataContext;
 using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Repository
 {
     public class GenericRepo<T> : IGenericRepo<T> where T : class
     {
-        private readonly EcommerceDbContext context;
+        protected readonly EcommerceDbContext context;
 
         public GenericRepo(EcommerceDbContext context)
         {
             this.context = context;
         }
 
-        public GenericRepo() { 
-        }
         public async Task AddAsync(T obj)
         {
             await context.Set<T>().AddAsync(obj);

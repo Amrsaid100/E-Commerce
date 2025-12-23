@@ -10,7 +10,7 @@ namespace E_Commerce.Repository
         public ProductRepo(EcommerceDbContext context):base(context)
         {
             this.context = context;
-    }
+        }
 
         public async Task<Product> GetProductBySearchAsync(string searchString)
         {
@@ -19,7 +19,6 @@ namespace E_Commerce.Repository
 
             return product;
         }
-
         public async Task<List<Product>> GetProductsByCategoryAsync(string categorname)
         {
             int CategoryId = await context.Categories

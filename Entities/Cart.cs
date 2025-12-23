@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace E_Commerce.Entities
@@ -7,12 +9,15 @@ namespace E_Commerce.Entities
     {
         [Key]
         public int Id { get; set; }
+
         [Required]
-        public  List<CartItem> Items { get; set; }
+        public List<CartItem> Items { get; set; } = new();
+
         public decimal TotalPrice { get; set; }
-        [ForeignKey("User")]
+
+        [ForeignKey(nameof(User))]
         public int UserId { get; set; }
-        
-        public User User { get; set; }
+
+        public User? User { get; set; }
     }
 }
