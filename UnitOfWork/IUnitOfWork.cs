@@ -21,8 +21,8 @@ namespace E_Commerce.UnitOfWork
         public IGenericRepo<ProductImage> ProductImages { get; }
 
         public IGenericRepo<ProductVariant> ProductVariants { get; }
+        IUserRepo Users { get; }
 
-        public IGenericRepo<User> Users { get; }
 
         Task SaveChangesAsync();
     }

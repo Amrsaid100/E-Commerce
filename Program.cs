@@ -43,6 +43,8 @@ namespace E_Commerce
             builder.Services.AddScoped(typeof(IGenericRepo<>), typeof(GenericRepo<>));
             builder.Services.AddScoped<IProductRepo, ProductRepo>();
             builder.Services.AddScoped<ICartRepo, CartRepo>();
+            builder.Services.AddScoped<IUserRepo, UserRepo>();
+
 
             // Unit of Work
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
@@ -56,22 +58,30 @@ namespace E_Commerce
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
 
             //  JWT Authentication
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
+            builder.Services
+     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+     .AddJwtBearer(options =>
+     {
+         var issuer = builder.Configuration["Jwt:Issuer"];
+         var audience = builder.Configuration["Jwt:Audience"];
+         var key = builder.Configuration["Jwt:Key"];
 
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
-                    };
-                });
+         options.TokenValidationParameters = new TokenValidationParameters
+         {
+             ValidateIssuer = true,
+             ValidateAudience = true,
+             ValidateLifetime = true,
+             ValidateIssuerSigningKey = true,
+             RequireExpirationTime = true,
+             ClockSkew = TimeSpan.FromMinutes(2),
+
+             ValidIssuer = issuer,
+             ValidAudience = audience,
+             IssuerSigningKey = new SymmetricSecurityKey(
+                 Encoding.UTF8.GetBytes(key!)
+             )
+         };
+     });
 
             builder.Services.AddAuthorization();
 

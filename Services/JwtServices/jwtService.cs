@@ -1,4 +1,5 @@
 ﻿using E_Commerce.Entities;
+using E_Commerce.Services.JwtServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -8,7 +9,6 @@ namespace E_Commerce.Services.JwtServices
 {
     public class JwtService : IJwtService
     {
-        private readonly IConfiguration _config;
         private readonly string _issuer;
         private readonly string _audience;
         private readonly string _key;
@@ -16,25 +16,26 @@ namespace E_Commerce.Services.JwtServices
 
         public JwtService(IConfiguration config)
         {
-            _config = config;
-            _issuer = _config["Jwt:Issuer"] ?? "ECommerceIssuer";
-            _audience = _config["Jwt:Audience"] ?? "ECommerceAudience";
-            _key = _config["Jwt:Key"] ?? "ReplaceWithStrongKey";
-            _expiryMinutes = int.TryParse(_config["Jwt:ExpiryMinutes"], out var m) ? m : 60;
+            _issuer = config["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
+            _audience = config["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
+            _key = config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+            _expiryMinutes = int.TryParse(config["Jwt:ExpiryMinutes"], out var m) ? m : 30;
         }
 
         public string GenerateToken(User user)
         {
             var claims = new List<Claim>
-            {
-                new Claim("UserId", user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-                // Fix for CS1061: 'User' does not contain a definition for 'Role'
-                // Use a default role value since User does not have a Role property
-                new Claim(ClaimTypes.Role, "User")
-            };
+        {
+            // user id
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            // email
+            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+            // role
+            new Claim(ClaimTypes.Role, user.Role ?? "User"),
+            // jti revoke
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
 
-            // Fix for IDE0090: 'new' expression can be simplified
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -42,6 +43,7 @@ namespace E_Commerce.Services.JwtServices
                 issuer: _issuer,
                 audience: _audience,
                 claims: claims,
+                notBefore: DateTime.UtcNow,
                 expires: DateTime.UtcNow.AddMinutes(_expiryMinutes),
                 signingCredentials: creds
             );
@@ -49,4 +51,5 @@ namespace E_Commerce.Services.JwtServices
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
+
 }

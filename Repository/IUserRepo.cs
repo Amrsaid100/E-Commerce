@@ -1,6 +1,10 @@
-﻿namespace E_Commerce.Repository
+﻿using E_Commerce.Entities;
+
+namespace E_Commerce.Repository
 {
-    public class IUserRepo
+    public interface IUserRepo : IGenericRepo<User>
     {
+        Task<User?> GetByEmailAsync(string email);
     }
+
 }

@@ -9,9 +9,8 @@ namespace E_Commerce.UnitOfWork
     {
         private readonly EcommerceDbContext context;
 
-        // Lazy Repositories
         private readonly Lazy<ICartRepo> _Cart;
-        private readonly Lazy<IGenericRepo<User>> _User;
+        private readonly Lazy<IUserRepo> _User;               
         private readonly Lazy<IProductRepo> _Product;
         private readonly Lazy<IGenericRepo<Order>> _Order;
         private readonly Lazy<ICategoryRepo> _Category;
@@ -25,7 +24,7 @@ namespace E_Commerce.UnitOfWork
             this.context = context;
 
             _Cart = new Lazy<ICartRepo>(() => new CartRepo(context));
-            _User = new Lazy<IGenericRepo<User>>(() => new GenericRepo<User>(context));
+            _User = new Lazy<IUserRepo>(() => new UserRepo(context));        
             _Product = new Lazy<IProductRepo>(() => new ProductRepo(context));
             _Order = new Lazy<IGenericRepo<Order>>(() => new GenericRepo<Order>(context));
             _Category = new Lazy<ICategoryRepo>(() => new CategoryRepo(context));
@@ -43,11 +42,13 @@ namespace E_Commerce.UnitOfWork
         public IProductRepo Products => _Product.Value;
         public IGenericRepo<ProductImage> ProductImages => _ProductImage.Value;
         public IGenericRepo<ProductVariant> ProductVariants => _ProductVariant.Value;
-        public IGenericRepo<User> Users => _User.Value;
+
+        public IUserRepo Users => _User.Value;                  
 
         public async Task SaveChangesAsync()
         {
             await context.SaveChangesAsync();
         }
     }
+
 }

@@ -16,11 +16,11 @@ namespace E_Commerce.Services.Authservice
             _jwt = jwt;
         }
 
-        public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+        public async Task<AuthResponseDto?> RegisterAsync(RegisterDto dto)
         {
-            var users = await _uow.Users.GetAllAsync();
-            if (users.Any(u => u.Email.ToLower() == dto.Email.ToLower()))
-                return null; // caller/controller should convert to Conflict
+            var existingUser = await _uow.Users.GetByEmailAsync(dto.Email);
+            if (existingUser != null)
+                return null;
 
             var user = new User
             {
@@ -44,10 +44,9 @@ namespace E_Commerce.Services.Authservice
             };
         }
 
-        public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+        public async Task<AuthResponseDto?> LoginAsync(LoginDto dto)
         {
-            var users = await _uow.Users.GetAllAsync();
-            var user = users.FirstOrDefault(u => u.Email.ToLower() == dto.Email.ToLower());
+            var user = await _uow.Users.GetByEmailAsync(dto.Email);
             if (user == null)
                 return null;
 
@@ -55,6 +54,7 @@ namespace E_Commerce.Services.Authservice
                 return null;
 
             var token = _jwt.GenerateToken(user);
+
             return new AuthResponseDto
             {
                 Token = token,
@@ -64,4 +64,5 @@ namespace E_Commerce.Services.Authservice
             };
         }
     }
+
 }
