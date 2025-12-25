@@ -79,11 +79,11 @@ namespace E_Commerce.Services.ProductService
             await work.SaveChangesAsync();
         }
 
-        public async Task UpdateProductAsync(int ProductId, ProductDto NewProduct)
+        public async Task<bool> UpdateProductAsync(int ProductId, ProductDto NewProduct)
         {
             var product = await work.Products.GetByIdAsync(ProductId);
             if (product == null)
-                return;
+                return false;
 
             product.Description = NewProduct.Description;
             product.Price = NewProduct.Price;
@@ -118,6 +118,7 @@ namespace E_Commerce.Services.ProductService
             }
 
             await work.SaveChangesAsync();
+            return true;
         }
 
         // Private method To change Product To ProductDto
