@@ -1,6 +1,8 @@
 ﻿using E_Commerce.DTOs.Auth;
 using E_Commerce.Services.Authservice;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 
 namespace E_Commerce.Controllers
 {
@@ -35,6 +37,34 @@ namespace E_Commerce.Controllers
                 return BadRequest("Invalid OTP or Email");
 
             return Ok(authResponse);
+        }
+
+        // Promote User to Admin (Owner only)
+        [HttpPost("promote")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> PromoteUser([FromBody] PromoteUserDto dto)
+        {
+            var ownerEmail = User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            if (string.IsNullOrWhiteSpace(ownerEmail)) return Unauthorized();
+
+            var success = await _authService.PromoteUserToAdminAsync(ownerEmail, dto.Email);
+            if (!success) return BadRequest("Cannot promote user");
+
+            return Ok("User promoted to Admin");
+        }
+
+        // Demote Admin to User (Owner only)
+        [HttpPost("demote")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> DemoteAdmin([FromBody] DemoteAdminDto dto)
+        {
+            var ownerEmail = User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            if (string.IsNullOrWhiteSpace(ownerEmail)) return Unauthorized();
+
+            var success = await _authService.DemoteAdminToUserAsync(ownerEmail, dto.Email);
+            if (!success) return BadRequest("Cannot demote admin");
+
+            return Ok("Admin demoted to User");
         }
     }
 }

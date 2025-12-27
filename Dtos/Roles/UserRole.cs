@@ -1,6 +1,10 @@
 ﻿namespace E_Commerce.Dtos.Roles
 {
-    public class UserRole
+    public enum UserRole
     {
+        User,
+        Admin,
+        Owner
     }
+
 }

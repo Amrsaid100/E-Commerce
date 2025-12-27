@@ -1,4 +1,5 @@
-﻿using System;
+﻿using E_Commerce.Dtos.Roles;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
@@ -16,7 +17,8 @@ namespace E_Commerce.Entities
         public string PasswordHash { get; set; }
 
         [Required, MaxLength(50)]
-        public string Role { get; set; } = "User";
+        public UserRole Role { get; set; } = UserRole.User;
+
 
         [MaxLength(100)]
         public string Name { get; set; }
