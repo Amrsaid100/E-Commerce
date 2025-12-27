@@ -1,7 +1,7 @@
 ﻿using E_Commerce.Dtos.CategoryDtos;
+using E_Commerce.Entities;
 using E_Commerce.Services.CategoryService;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace E_Commerce.Controllers
@@ -10,13 +10,14 @@ namespace E_Commerce.Controllers
     [ApiController]
     public class CategoryController : ControllerBase
     {
-        public ICategoryService categoryService { get; }
+        private readonly ICategoryService categoryService;
 
         public CategoryController(ICategoryService categoryService)
         {
             this.categoryService = categoryService;
         }
 
+        // Get all categories
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -24,7 +25,8 @@ namespace E_Commerce.Controllers
             return Ok(categories);
         }
 
-        [HttpGet("{id:int}")]
+        // Get category by ID
+        [HttpGet("id/{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var category = await categoryService.GetCategoryByIdAsync(id);
@@ -34,17 +36,29 @@ namespace E_Commerce.Controllers
             return Ok(category);
         }
 
-
-        [HttpGet("{CategoryName:string}")]
-        public async Task<IActionResult> GetByName(string CategoryName)
+        // Get category by Name
+        [HttpGet("name/{categoryName}")]
+        public async Task<IActionResult> GetByName(string categoryName)
         {
-            var category = await categoryService.GetCategoryByNameAsync(CategoryName);
+            var category = await categoryService.GetCategoryByNameAsync(categoryName);
             if (category == null)
                 return NotFound();
 
             return Ok(category);
         }
 
+        // Get category with products count (by Name)
+        [HttpGet("name/{categoryName}/products/count")]
+        public async Task<IActionResult> GetCategoryWithProductCount(string categoryName)
+        {
+            var result = await categoryService.GetCategoryWithProductCountAsync(categoryName);
+            if (result == null)
+                return NotFound();
+
+            return Ok(result);
+        }
+
+        // Create new category
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(NewCategoryDto newCategory)
@@ -52,11 +66,15 @@ namespace E_Commerce.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            await categoryService.AddCategoryAsync(newCategory);
+            var created = await categoryService.AddCategoryAsync(newCategory);
+            if (!created)
+                return BadRequest("Category already exists");
+
             return StatusCode(201);
         }
 
-        [HttpPut("{id:int}")]
+        // Update category
+        [HttpPut("id/{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Update(int id, UpdateCategoryDto dto)
         {
@@ -70,7 +88,8 @@ namespace E_Commerce.Controllers
             return NoContent();
         }
 
-        [HttpDelete("{id:int}")]
+        // Delete category
+        [HttpDelete("id/{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -81,7 +100,8 @@ namespace E_Commerce.Controllers
             return NoContent();
         }
     }
-
-
 }
-
+//the route should be as 🔽 
+//GET /api/category/name/electronics
+//GET / api / category / name / electronics / products / count
+//GET / api / category / id / 5

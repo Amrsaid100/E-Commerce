@@ -9,8 +9,7 @@ public class UserSignInValidator : AbstractValidator<UserSignInDto>
             .NotEmpty().WithMessage("Email address is required")
             .EmailAddress().WithMessage("Invalid email format");
 
-        RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(6).WithMessage("Password must be at least 6 characters");
+        // Remove password validation completely because we're using OTP
+        // RuleFor(x => x.Password) ...  <-- removed
     }
 }

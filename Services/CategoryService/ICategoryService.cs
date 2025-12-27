@@ -16,6 +16,7 @@ namespace E_Commerce.Services.CategoryService
 
         Task<bool> DeleteCategoryAsync(int categoryId);
 
-        Task<CategoryWithProductCountDto> GetCategoryWithProductCountAsync(int categoryId);
+        Task<CategoryWithProductCountDto?> GetCategoryWithProductCountAsync(string categoryName);
+
     }
 }

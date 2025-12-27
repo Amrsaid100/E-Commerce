@@ -50,8 +50,6 @@ namespace E_Commerce
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
 
             // Services
-            builder.Services.AddScoped<IProductService, ProdService>();
-            builder.Services.AddScoped<ICategoryService, CategoryService>();
             //after builder.Services.AddAuthorization();
 
             builder.Services.AddSingleton<IJwtService, E_Commerce.Services.JwtServices.JwtService>();

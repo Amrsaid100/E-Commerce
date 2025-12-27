@@ -1,9 +1,10 @@
 ﻿using E_Commerce.DTOs.Auth;
+
 namespace E_Commerce.Services.Authservice
 {
     public interface IAuthService
     {
-        Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
-        Task<AuthResponseDto> LoginAsync(LoginDto dto);
+        Task<bool> RequestOtpAsync(RequestOtpDto dto);      // Generate & Send OTP
+        Task<AuthResponseDto?> VerifyOtpAsync(VerifyOtpDto dto); // Verify OTP and return JWT
     }
 }

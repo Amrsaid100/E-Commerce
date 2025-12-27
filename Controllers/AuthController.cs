@@ -1,6 +1,5 @@
 ﻿using E_Commerce.DTOs.Auth;
 using E_Commerce.Services.Authservice;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace E_Commerce.Controllers
@@ -9,39 +8,33 @@ namespace E_Commerce.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private readonly IAuthService auth;
-        public AuthController(IAuthService auth)
+        private readonly IAuthService _authService;
+
+        public AuthController(IAuthService authService)
         {
-            this.auth = auth;
-        }
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterDto register)
-        {
-            if (ModelState.IsValid)
-            {
-                var result = await auth.RegisterAsync(register);
-                if (result != null)
-                {
-                    return Ok(result);
-                }
-                return Conflict(new { message = "Email already" });
-            }
-            return BadRequest(ModelState);
+            _authService = authService;
         }
 
-        [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginDto login)
+        // Request OTP
+        [HttpPost("request-otp")]
+        public async Task<IActionResult> RequestOtp(RequestOtpDto dto)
         {
-            if (ModelState.IsValid)
-            {
-                var result = await auth.LoginAsync(login);
-                if (result != null)
-                {
-                    return Ok(result);
-                }
-                return Unauthorized(new { message = "Invalid email or password" });
-            }
-            return BadRequest(ModelState);
+            var success = await _authService.RequestOtpAsync(dto);
+            if (!success)
+                return BadRequest("Invalid email");
+
+            return Ok("OTP sent successfully");
+        }
+
+        // Verify OTP
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp(VerifyOtpDto dto)
+        {
+            var authResponse = await _authService.VerifyOtpAsync(dto);
+            if (authResponse == null)
+                return BadRequest("Invalid OTP or Email");
+
+            return Ok(authResponse);
         }
     }
 }

@@ -134,20 +134,26 @@ namespace E_Commerce.Services.CategoryService
         }
 
         // Bring the Counter With category 
-        public async Task<CategoryWithProductCountDto?> GetCategoryWithProductCountAsync(int categoryId)
+        public async Task<CategoryWithProductCountDto?> GetCategoryWithProductCountAsync(string categoryName)
         {
-            if (categoryId <= 0)
+            //  null or empty check
+            if (string.IsNullOrWhiteSpace(categoryName))
                 return null;
 
-            var category = await work.Categories.GetByIdAsync(categoryId);
+            // Bring all categories (because repo doesn't have GetByName)
+            var categories = await work.Categories.GetAllAsync();
+
+            if (categories == null || !categories.Any())
+                return null;
+
+            // Find category by name (case-insensitive)
+            var category = categories.FirstOrDefault(c =>
+                c.Name != null && c.Name.Equals(categoryName, StringComparison.OrdinalIgnoreCase));
+
             if (category == null)
                 return null;
 
-            //  null check On category.Name
-            if (string.IsNullOrWhiteSpace(category.Name))
-                return null;
-
-            // You Need To Bring Products repository
+            // Bring products related to this category
             var products = await work.Products.GetProductsByCategoryAsync(category.Name);
 
             return new CategoryWithProductCountDto
@@ -158,6 +164,7 @@ namespace E_Commerce.Services.CategoryService
                 ProductCount = products?.Count ?? 0
             };
         }
+
 
         // Private method TO Transfer Entity To DTO
         private CategoryDto MapToDto(Category category)
