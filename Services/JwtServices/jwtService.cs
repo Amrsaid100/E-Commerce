@@ -32,6 +32,8 @@ namespace E_Commerce.Services.JwtServices
             new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
             // role
             new Claim(ClaimTypes.Role, user.Role.ToString()),
+            //Add name to Database  
+            new Claim("name", user.Name ?? string.Empty),
             // jti revoke
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

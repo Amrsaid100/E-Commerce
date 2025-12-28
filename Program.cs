@@ -17,7 +17,7 @@ namespace E_Commerce
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +84,7 @@ namespace E_Commerce
             builder.Services.AddAuthorization();
 
             var app = builder.Build();
+            await DbSeeder.SeedOwnerAsync(app);
 
             if (app.Environment.IsDevelopment())
             {

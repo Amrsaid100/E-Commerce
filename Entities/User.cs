@@ -16,7 +16,7 @@ namespace E_Commerce.Entities
         [Required, MaxLength(200)]
         public string PasswordHash { get; set; }
 
-        [Required, MaxLength(50)]
+        [Required]
         public UserRole Role { get; set; } = UserRole.User;
 
 
@@ -26,5 +26,11 @@ namespace E_Commerce.Entities
         public Cart? Cart { get; set; }
 
         public List<Order> Orders { get; set; } = new();
+        // Refresh token
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
+
     }
 }

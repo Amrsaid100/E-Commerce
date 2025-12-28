@@ -7,19 +7,31 @@ namespace E_Commerce.Entities
     {
         [Key]
         public int Id { get; set; }
-        public int CartId { get; set; }
-        public int ProductVariantId { get; set; }
+
         [Required]
-        public string? ProductName { get; set; }
+        public int CartId { get; set; }
+
+        [Required]
+        public int ProductVariantId { get; set; }
+
+        [Required]
+        public string ProductName { get; set; } = null!;
+
         [Required]
         public int Quantity { get; set; }
+
         [Required]
         public decimal UnitPrice { get; set; }
+
         [Required]
-        [ForeignKey("ProductVariant")]
-        public virtual ProductVariant? ProductVariant { get; set; }
+        [ForeignKey("ProductVariantId")]
+        public virtual ProductVariant ProductVariant { get; set; } = null!;
+
         [Required]
-        [ForeignKey("Cart")]
-        public Cart Cart { get; set; }
+        [ForeignKey("CartId")]
+        public Cart Cart { get; set; } = null!;
+
+        [NotMapped]
+        public decimal TotalPrice => Quantity * UnitPrice;
     }
 }

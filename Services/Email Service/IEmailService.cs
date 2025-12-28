@@ -1,6 +1,7 @@
-﻿namespace E_Commerce.Services.Email_Service
+﻿namespace E_Commerce.Services.EmailService
 {
-    public class IEmailService
+    public interface IEmailService
     {
+        Task SendEmailAsync(string toEmail, string subject, string body);
     }
 }
