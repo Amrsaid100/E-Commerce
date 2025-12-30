@@ -13,7 +13,7 @@ namespace E_Commerce.Repository
             this.context = context;
         }
 
-        public async Task<Order> GetOrderByUserId(int UserId)
+        public async Task<Order?> GetOrderByUserId(int UserId)
         {
              return await context.Set<Order>().Include(o=>o.Items)
                                            .ThenInclude(i=>i.ProductVariant)

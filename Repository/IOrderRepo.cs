@@ -5,6 +5,6 @@ namespace E_Commerce.Repository
 {
     public interface IOrderRepo: IGenericRepo<Order>
     {
-        Task<Order> GetOrderByUserId (int UserId);
+        Task<Order?> GetOrderByUserId (int UserId);
     }
 }
