@@ -12,7 +12,7 @@ namespace E_Commerce.UnitOfWork
         private readonly Lazy<ICartRepo> _Cart;
         private readonly Lazy<IUserRepo> _User;               
         private readonly Lazy<IProductRepo> _Product;
-        private readonly Lazy<IGenericRepo<Order>> _Order;
+        private readonly Lazy<IOrderRepo> _Order;
         private readonly Lazy<ICategoryRepo> _Category;
         private readonly Lazy<IGenericRepo<CartItem>> _CartItem;
         private readonly Lazy<IGenericRepo<ProductImage>> _ProductImage;
@@ -26,7 +26,7 @@ namespace E_Commerce.UnitOfWork
             _Cart = new Lazy<ICartRepo>(() => new CartRepo(context));
             _User = new Lazy<IUserRepo>(() => new UserRepo(context));        
             _Product = new Lazy<IProductRepo>(() => new ProductRepo(context));
-            _Order = new Lazy<IGenericRepo<Order>>(() => new GenericRepo<Order>(context));
+            _Order = new Lazy<IOrderRepo>(() => new OrderRepo(context));
             _Category = new Lazy<ICategoryRepo>(() => new CategoryRepo(context));
             _CartItem = new Lazy<IGenericRepo<CartItem>>(() => new GenericRepo<CartItem>(context));
             _ProductImage = new Lazy<IGenericRepo<ProductImage>>(() => new GenericRepo<ProductImage>(context));
@@ -37,7 +37,7 @@ namespace E_Commerce.UnitOfWork
         public ICartRepo Carts => _Cart.Value;
         public IGenericRepo<CartItem> CartItems => _CartItem.Value;
         public ICategoryRepo Categories => _Category.Value;
-        public IGenericRepo<Order> Orders => _Order.Value;
+        public IOrderRepo Orders => _Order.Value;
         public IGenericRepo<OrderItem> OrderItems => _OrderItem.Value;
         public IProductRepo Products => _Product.Value;
         public IGenericRepo<ProductImage> ProductImages => _ProductImage.Value;

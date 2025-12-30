@@ -3,6 +3,7 @@ using E_Commerce.Repository;
 using E_Commerce.Services.Authservice;
 using E_Commerce.Services.CategoryService;
 using E_Commerce.Services.JwtServices;
+using E_Commerce.Services.PayMob;
 using E_Commerce.Services.ProductService;
 using E_Commerce.UnitOfWork;
 using FluentValidation;
@@ -54,6 +55,8 @@ namespace E_Commerce
 
             builder.Services.AddSingleton<IJwtService, E_Commerce.Services.JwtServices.JwtService>();
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
+            builder.Services.AddHttpClient<IPaymobService, PaymobService>();
+
 
             //  JWT Authentication
             builder.Services

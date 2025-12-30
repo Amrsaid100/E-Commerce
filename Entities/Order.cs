@@ -5,6 +5,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace E_Commerce.Entities
 {
+    public enum OrderStatus
+    {
+        PendingPayment,
+        Paid,
+        Failed
+    }
     public class Order
     {
         [Key]
@@ -27,6 +33,10 @@ namespace E_Commerce.Entities
 
         [Required]
         public decimal TotalAmount { get; set; }
+
+        public OrderStatus Status { get; set; }   
+
+        public string? PaymentReference { get; set; }
 
         public List<OrderItem> Items { get; set; } = new();
 

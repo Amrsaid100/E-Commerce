@@ -136,26 +136,26 @@ namespace E_Commerce.Services.UserService
         }
 
 
-        public async Task<UserOrderDto> CheckOutAsync(int UserId,CheckOutDto CheckOut)
+        public async Task<int> CheckOutAsync(int UserId,CheckOutDto CheckOut)
         {
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
 
             if (Cart == null || !Cart.Items.Any())
             {
-                return null;
+                return 0;
             }
-            List<OrderItemDto> OrderItemDtos = new List<OrderItemDto>();
+            //List<OrderItemDto> OrderItemDtos = new List<OrderItemDto>();
             List<OrderItem> OrderItems = new List<OrderItem>();
             decimal totalPrice = 0;
             foreach(var item in Cart.Items)
             {
-                var orderItemDto1=new OrderItemDto()
-                {
-                    ProductVariantId = item.ProductVariantId,
-                    ProductName = item.ProductName,
-                    Quantity = item.Quantity,
-                    UnitPrice = item.UnitPrice
-                };
+                //var orderItemDto1=new OrderItemDto()
+                //{
+                //    ProductVariantId = item.ProductVariantId,
+                //    ProductName = item.ProductName,
+                //    Quantity = item.Quantity,
+                //    UnitPrice = item.UnitPrice
+                //};
 
                 var OrderItem1 = new OrderItem()
                 {
@@ -166,7 +166,7 @@ namespace E_Commerce.Services.UserService
                 };
                 totalPrice += item.UnitPrice * item.Quantity;
 
-                OrderItemDtos.Add(orderItemDto1);
+                //OrderItemDtos.Add(orderItemDto1);
                 OrderItems.Add(OrderItem1);
             }
             Order NewOrder = new Order()
@@ -178,21 +178,56 @@ namespace E_Commerce.Services.UserService
                 City = CheckOut.City,
                 PhoneNumber = CheckOut.PhoneNumber,
                 TotalAmount = totalPrice,
+                Status = OrderStatus.PendingPayment,
                 CreatedAt = DateTime.UtcNow
             };
 
-            UserOrderDto FinalOrder = new UserOrderDto()
-            {
-                Items = OrderItemDtos,
-                TotalPrice = totalPrice
-            };
+            //UserOrderDto FinalOrder = new UserOrderDto()
+            //{
+            //    Items = OrderItemDtos,
+            //    TotalPrice = totalPrice
+            //};
 
             await work.Orders.AddAsync(NewOrder);
-            Cart.Items.Clear();
+            //Cart.Items.Clear();
             await work.SaveChangesAsync();
 
-            return FinalOrder;
+            return NewOrder.OrderId;
         }
-            
+
+        public async Task FromGuestCartToUserCart(int UserId, CartDto GuestCart)
+        {
+            if(GuestCart == null || GuestCart.Items == null || !GuestCart.Items.Any()||UserId==0)
+                return;
+            var Cart = await work.Carts.GetByUserIdAsync(UserId);
+            List<CartItem> CartItems = new List<CartItem>();
+            foreach(var item in GuestCart.Items)
+            {
+                var cartItem = new CartItem()
+                {
+                    ProductVariantId = item.ProductVariantId,
+                    ProductName = item.ProductName,
+                    UnitPrice = item.UnitPrice,
+                    Quantity = item.Quantity,
+                };
+                CartItems.Add(cartItem);
+            }
+            if (Cart == null)
+            {
+                Cart = new Cart()
+                {
+                    UserId = UserId,
+                    Items = CartItems
+                };
+                await work.Carts.AddAsync(Cart);
+                await work.SaveChangesAsync();
+            }
+            else
+            {
+                return;
+            }
+
+        }
+
     }
 }

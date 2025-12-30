@@ -10,7 +10,7 @@ namespace E_Commerce.Services.UserService
         Task RemoveFromCart(int UserId,CartItemDto item);
         Task<CartDto> GetUserCart (int UserId); 
         Task ClearCart (int UserId);
-
-        Task <UserOrderDto> CheckOutAsync (int UserId,CheckOutDto CheckOut);
+        Task <int> CheckOutAsync (int UserId,CheckOutDto CheckOut);
+        Task FromGuestCartToUserCart (int UserId,CartDto GuestCart);
     }
 }

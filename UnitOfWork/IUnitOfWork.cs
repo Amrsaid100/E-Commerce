@@ -12,7 +12,7 @@ namespace E_Commerce.UnitOfWork
 
         ICategoryRepo Categories { get; }
 
-        public IGenericRepo<Order> Orders { get; }
+        public IOrderRepo Orders { get; }
 
         public IGenericRepo<OrderItem> OrderItems { get; }
 
