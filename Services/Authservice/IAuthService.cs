@@ -17,5 +17,11 @@ namespace E_Commerce.Services.Authservice
 
         // Owner-only: Demote Admin to User
         Task<bool> DemoteAdminToUserAsync(string ownerEmail, string adminEmail);
+
+        //  Refresh
+        Task<RefreshResponseDto?> RefreshAsync(RefreshRequestDto dto);
+
+        // Logout
+        Task<bool> LogoutAsync(int userId, string jti, DateTime accessTokenExpiresAtUtc);
     }
 }

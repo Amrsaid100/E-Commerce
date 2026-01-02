@@ -2,7 +2,7 @@
 using E_Commerce.Dtos.UserDto;
 using Microsoft.SqlServer.Server;
 
-namespace E_Commerce.Services.UserService
+namespace E_Commerce.Services.CartService
 {
     public interface ICartService
     {

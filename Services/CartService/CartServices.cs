@@ -5,7 +5,7 @@ using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 using Microsoft.AspNetCore.Http.HttpResults;
 
-namespace E_Commerce.Services.UserService
+namespace E_Commerce.Services.CartService
 {
     public class CartServices : ICartService
     {

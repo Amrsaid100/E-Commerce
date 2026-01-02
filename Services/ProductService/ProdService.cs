@@ -13,106 +13,122 @@ namespace E_Commerce.Services.ProductService
             work = unitOfWork;
         }
 
-        public async Task AddProductAsync(NewProductDto productDto)
+        public async Task<ProductDto> AddProductAsync(NewProductDto productDto)
         {
             if (productDto == null)
-                return;
+                throw new ArgumentNullException(nameof(productDto));
 
-            //Add null check Variants
             if (productDto.Variants == null || !productDto.Variants.Any())
-                return;
+                throw new ArgumentException("Product must have at least one variant.", nameof(productDto));
 
-            var variants = productDto.Variants.Select(variantDto => new ProductVariant
+            var variants = productDto.Variants.Select(v => new ProductVariant
             {
-                Price = variantDto.Price,
-                Quantity = variantDto.Quantity,
-                Color = variantDto.Color,
-                Size = variantDto.Size
+                Price = v.Price,
+                Quantity = v.Quantity,
+                Color = v.Color,
+                Size = v.Size
             }).ToList();
 
             var product = new Product
             {
                 Description = productDto.Description,
-                Category = productDto.Category,
+                Category = productDto.Category, 
                 Price = productDto.Price,
                 Variants = variants
             };
 
+            // Images ( NewProductDto)
+            if (productDto.Images != null && productDto.Images.Any())
+            {
+                product.Images = productDto.Images.Select(img => new ProductImage
+                {
+                    ImageUrl = img.ImageUrl
+                }).ToList();
+            }
+
             await work.Products.AddAsync(product);
             await work.SaveChangesAsync();
+
+            return MapToDto(product);
         }
 
-        public async Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string CategoryName)
+        public async Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string categoryName)
         {
-            if (string.IsNullOrWhiteSpace(CategoryName))
+            if (string.IsNullOrWhiteSpace(categoryName))
                 return new List<ProductDto>();
 
-            var products = await work.Products.GetProductsByCategoryAsync(CategoryName);
+            var products = await work.Products.GetProductsByCategoryAsync(categoryName);
 
             if (products == null || !products.Any())
                 return new List<ProductDto>();
 
-            // use mapping method 
-            return products.Select(p => MapToDto(p)).ToList();
+            return products.Select(MapToDto).ToList();
         }
 
-        public async Task<ProductDto?> GetProductBySearchAsync(string Search)
+        public async Task<ProductDto?> GetProductBySearchAsync(string search)
         {
-            if (string.IsNullOrWhiteSpace(Search))
+            if (string.IsNullOrWhiteSpace(search))
                 return null;
 
-            var product = await work.Products.GetProductBySearchAsync(Search);
+            var product = await work.Products.GetProductBySearchAsync(search);
             if (product == null)
                 return null;
 
-            // use mapping method
             return MapToDto(product);
         }
 
-        public async Task RemoveProductAsync(int productId)
+        public async Task<bool> RemoveProductAsync(int productId)
         {
             var product = await work.Products.GetByIdAsync(productId);
             if (product == null)
-                return;
+                return false;
 
             await work.Products.DeleteAsync(product);
             await work.SaveChangesAsync();
+            return true;
         }
 
-        public async Task<bool> UpdateProductAsync(int ProductId, ProductDto NewProduct)
+        public async Task<bool> UpdateProductAsync(int productId, ProductDto newProduct)
         {
-            var product = await work.Products.GetByIdAsync(ProductId);
+            if (newProduct == null)
+                throw new ArgumentNullException(nameof(newProduct));
+
+            var product = await work.Products.GetByIdAsync(productId);
             if (product == null)
                 return false;
 
-            product.Description = NewProduct.Description;
-            product.Price = NewProduct.Price;
+            product.Description = newProduct.Description;
+            product.Price = newProduct.Price;
 
-            // Update the Variants
-            if (NewProduct.Variants != null && NewProduct.Variants.Any())
+            // Replace Variants
+            if (newProduct.Variants != null)
             {
+                product.Variants ??= new List<ProductVariant>();
                 product.Variants.Clear();
-                foreach (var varDto in NewProduct.Variants)
+
+                foreach (var v in newProduct.Variants)
                 {
                     product.Variants.Add(new ProductVariant
                     {
-                        Price = varDto.Price,
-                        Quantity = varDto.Quantity,
-                        Color = varDto.Color,
-                        Size = varDto.Size
+                        Price = v.Price,
+                        Quantity = v.Quantity,
+                        Color = v.Color,
+                        Size = v.Size
                     });
                 }
             }
 
-            // Update the Images
-            if (NewProduct.Images != null && NewProduct.Images.Any())
+            // Replace Images 
+            if (newProduct.Images != null)
             {
+                product.Images ??= new List<ProductImage>();
                 product.Images.Clear();
-                foreach (var imgDto in NewProduct.Images)
+
+                foreach (var img in newProduct.Images)
                 {
                     product.Images.Add(new ProductImage
                     {
-                        ImageUrl = imgDto.ImageUrl
+                        ImageUrl = img.ImageUrl
                     });
                 }
             }
@@ -121,7 +137,7 @@ namespace E_Commerce.Services.ProductService
             return true;
         }
 
-        // Private method To change Product To ProductDto
+        // Mapping
         private ProductDto MapToDto(Product product)
         {
             var variantDtos = product.Variants?.Select(v => new NewProductVariantDto

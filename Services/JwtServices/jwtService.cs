@@ -35,7 +35,10 @@ namespace E_Commerce.Services.JwtServices
             //Add name to Database  
             new Claim("name", user.Name ?? string.Empty),
             // jti revoke
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+
+            new Claim("id", user.Id.ToString()),
+
         };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));

@@ -13,15 +13,16 @@ namespace E_Commerce.Entities
         [Required, EmailAddress, MaxLength(100)]
         public string Email { get; set; }
 
-        [Required, MaxLength(200)]
-        public string PasswordHash { get; set; }
+
+        public string PasswordHash { get; set; } = "";
+
 
         [Required]
         public UserRole Role { get; set; } = UserRole.User;
 
 
         [MaxLength(100)]
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         public Cart? Cart { get; set; }
 

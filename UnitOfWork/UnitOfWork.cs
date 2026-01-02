@@ -18,6 +18,8 @@ namespace E_Commerce.UnitOfWork
         private readonly Lazy<IGenericRepo<ProductImage>> _ProductImage;
         private readonly Lazy<IGenericRepo<ProductVariant>> _ProductVariant;
         private readonly Lazy<IGenericRepo<OrderItem>> _OrderItem;
+        private readonly Lazy<IRefreshTokenRepo> _RefreshTokens;
+        private readonly Lazy<IRevokedTokenRepo> _RevokedTokens;
 
         public UnitOfWork(EcommerceDbContext context)
         {
@@ -32,6 +34,9 @@ namespace E_Commerce.UnitOfWork
             _ProductImage = new Lazy<IGenericRepo<ProductImage>>(() => new GenericRepo<ProductImage>(context));
             _ProductVariant = new Lazy<IGenericRepo<ProductVariant>>(() => new GenericRepo<ProductVariant>(context));
             _OrderItem = new Lazy<IGenericRepo<OrderItem>>(() => new GenericRepo<OrderItem>(context));
+            _RefreshTokens = new Lazy<IRefreshTokenRepo>(() => new RefreshTokenRepo(context));
+            _RevokedTokens = new Lazy<IRevokedTokenRepo>(() => new RevokedTokenRepo(context));
+
         }
 
         public ICartRepo Carts => _Cart.Value;
@@ -42,6 +47,8 @@ namespace E_Commerce.UnitOfWork
         public IProductRepo Products => _Product.Value;
         public IGenericRepo<ProductImage> ProductImages => _ProductImage.Value;
         public IGenericRepo<ProductVariant> ProductVariants => _ProductVariant.Value;
+        public IRefreshTokenRepo RefreshTokens => _RefreshTokens.Value;
+        public IRevokedTokenRepo RevokedTokens => _RevokedTokens.Value;
 
         public IUserRepo Users => _User.Value;                  
 

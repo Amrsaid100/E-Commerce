@@ -1,6 +1,6 @@
 ﻿using E_Commerce.Dtos.CartDto;
 using E_Commerce.Dtos.UserDto;
-using E_Commerce.Services.UserService;
+using E_Commerce.Services.CartService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;

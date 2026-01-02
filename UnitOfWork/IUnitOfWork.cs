@@ -21,6 +21,9 @@ namespace E_Commerce.UnitOfWork
         public IGenericRepo<ProductImage> ProductImages { get; }
 
         public IGenericRepo<ProductVariant> ProductVariants { get; }
+        public IRefreshTokenRepo RefreshTokens { get; }
+        public IRevokedTokenRepo RevokedTokens { get; }
+
         IUserRepo Users { get; }
 
 

@@ -8,7 +8,7 @@ namespace E_Commerce.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Route("api/[controller]")]
+    
     public class OrderController : ControllerBase
     {
         private readonly IUnitOfWork _unitofwork;
@@ -26,7 +26,7 @@ namespace E_Commerce.Controllers
             return Ok(orders);
         }
 
-        [HttpGet("user/{userId}")]
+        [HttpGet("user/{userId:int}")]
         [Authorize]
         public async Task<IActionResult> GetOrdersByUserId(int userId)
         {

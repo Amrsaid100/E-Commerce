@@ -25,7 +25,8 @@ public static class DbSeeder
             {
                 Email = ownerEmail,
                 Name = "System Owner",
-                Role = UserRole.Owner
+                Role = UserRole.Owner,
+                PasswordHash = ""
             });
 
             await uow.SaveChangesAsync();

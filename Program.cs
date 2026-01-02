@@ -2,6 +2,7 @@
 using E_Commerce.Repository;
 using E_Commerce.Services.Authservice;
 using E_Commerce.Services.CategoryService;
+using E_Commerce.Services.EmailService;
 using E_Commerce.Services.JwtServices;
 using E_Commerce.Services.PayMob;
 using E_Commerce.Services.ProductService;
@@ -13,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics.Metrics;
 using System.Text;
-
+using System.Text.Json.Serialization;
 namespace E_Commerce
 {
     public class Program
@@ -24,6 +25,8 @@ namespace E_Commerce
 
             // Controllers
             builder.Services.AddControllers();
+            builder.Services.AddControllers().AddJsonOptions(options => {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());});
 
             // FluentValidation
             builder.Services.AddFluentValidationAutoValidation();
@@ -45,7 +48,9 @@ namespace E_Commerce
             builder.Services.AddScoped<IProductRepo, ProductRepo>();
             builder.Services.AddScoped<ICartRepo, CartRepo>();
             builder.Services.AddScoped<IUserRepo, UserRepo>();
-
+            builder.Services.AddScoped<IRefreshTokenRepo, RefreshTokenRepo>();
+            builder.Services.AddScoped<IRevokedTokenRepo, RevokedTokenRepo>();
+            
 
             // Unit of Work
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
@@ -54,8 +59,11 @@ namespace E_Commerce
             //after builder.Services.AddAuthorization();
 
             builder.Services.AddSingleton<IJwtService, E_Commerce.Services.JwtServices.JwtService>();
+            builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
             builder.Services.AddHttpClient<IPaymobService, PaymobService>();
+            builder.Services.AddScoped<IProductService, ProdService>();
+
 
 
             //  JWT Authentication
@@ -82,7 +90,31 @@ namespace E_Commerce
                  Encoding.UTF8.GetBytes(key!)
              )
          };
+
+         //  IMPORTANT: check revoked jti on every request
+         options.Events = new JwtBearerEvents
+         {
+             OnTokenValidated = async context =>
+             {
+                 var db = context.HttpContext.RequestServices
+                     .GetRequiredService<EcommerceDbContext>();
+
+                 var jti = context.Principal?
+                     .FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)
+                     ?.Value;
+
+                 if (!string.IsNullOrEmpty(jti))
+                 {
+                     var revoked = await db.RevokedTokens
+                         .AnyAsync(x => x.Jti == jti && x.ExpiresAtUtc > DateTime.UtcNow);
+
+                     if (revoked)
+                         context.Fail("Token revoked");
+                 }
+             }
+         };
      });
+
 
             builder.Services.AddAuthorization();
 
