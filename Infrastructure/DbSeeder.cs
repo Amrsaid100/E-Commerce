@@ -1,4 +1,6 @@
-﻿using E_Commerce.Dtos.Roles;
+﻿using System;
+using System.Security.Cryptography;
+using E_Commerce.Dtos.Roles;
 using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 using Microsoft.Extensions.Configuration;
@@ -21,12 +23,15 @@ public static class DbSeeder
 
         if (owner == null)
         {
+            // Use real hashed password when available; placeholder prevents NULL insert.
+            var placeholderHash = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
             await uow.Users.AddAsync(new User
             {
                 Email = ownerEmail,
                 Name = "System Owner",
                 Role = UserRole.Owner,
-                PasswordHash = ""
+                PasswordHash = placeholderHash
             });
 
             await uow.SaveChangesAsync();

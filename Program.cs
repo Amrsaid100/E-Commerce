@@ -26,7 +26,8 @@ namespace E_Commerce
             // Controllers
             builder.Services.AddControllers();
             builder.Services.AddControllers().AddJsonOptions(options => {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());});
+                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            });
 
             // FluentValidation
             builder.Services.AddFluentValidationAutoValidation();
@@ -50,7 +51,7 @@ namespace E_Commerce
             builder.Services.AddScoped<IUserRepo, UserRepo>();
             builder.Services.AddScoped<IRefreshTokenRepo, RefreshTokenRepo>();
             builder.Services.AddScoped<IRevokedTokenRepo, RevokedTokenRepo>();
-            
+
 
             // Unit of Work
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
@@ -63,8 +64,6 @@ namespace E_Commerce
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
             builder.Services.AddHttpClient<IPaymobService, PaymobService>();
             builder.Services.AddScoped<IProductService, ProdService>();
-
-
 
             //  JWT Authentication
             builder.Services
@@ -119,6 +118,14 @@ namespace E_Commerce
             builder.Services.AddAuthorization();
 
             var app = builder.Build();
+
+            // Ensure DB schema is up-to-date before seeding
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<EcommerceDbContext>();
+                db.Database.Migrate();
+            }
+
             await DbSeeder.SeedOwnerAsync(app);
 
             if (app.Environment.IsDevelopment())
