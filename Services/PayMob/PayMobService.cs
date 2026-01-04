@@ -21,7 +21,7 @@ namespace E_Commerce.Services.PayMob
                 new { api_key = _config["Paymob:ApiKey"] }
             );
             var authData = await authResponse.Content.ReadFromJsonAsync<dynamic>();
-            string token = authData.token;
+            string token = authData?.token ?? throw new InvalidOperationException("Failed to retrieve auth token");
 
             // 2️⃣ Create Paymob order
             var orderRequest = new
@@ -38,7 +38,7 @@ namespace E_Commerce.Services.PayMob
                 orderRequest
             );
             var orderData = await orderResponse.Content.ReadFromJsonAsync<dynamic>();
-            int paymobOrderId = orderData.id;
+            int paymobOrderId = orderData?.id ?? throw new InvalidOperationException("Failed to create Paymob order");
 
             // 3️⃣ Request payment key
             var paymentKeyRequest = new
@@ -63,7 +63,7 @@ namespace E_Commerce.Services.PayMob
                 paymentKeyRequest
             );
             var paymentKeyData = await paymentKeyResponse.Content.ReadFromJsonAsync<dynamic>();
-            string paymentToken = paymentKeyData.token;
+            string paymentToken = paymentKeyData?.token ?? throw new InvalidOperationException("Failed to retrieve payment token");
 
             // 4️⃣ Return iframe payment URL
             return $"https://accept.paymob.com/api/acceptance/iframes/{_config["Paymob:IframeId"]}?payment_token={paymentToken}";
