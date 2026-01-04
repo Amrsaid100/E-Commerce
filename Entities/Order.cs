@@ -14,22 +14,22 @@ namespace E_Commerce.Entities
     public class Order
     {
         [Key]
-        public int OrderId { get; set; }
+        public int Id { get; set; }
 
         [ForeignKey(nameof(User))]
         public int UserId { get; set; }
 
         [Required]
-        public string Email { get; set; }
+        public string Email { get; set; } = default!;
 
         [Required]
-        public string City { get; set; }
+        public string City { get; set; } = default!;
 
         [Required]
-        public string Street { get; set; }
+        public string Street { get; set; } = default!;
 
         [Required]
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = default!;
 
         [Required]
         public decimal TotalAmount { get; set; }

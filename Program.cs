@@ -1,20 +1,26 @@
 ﻿using E_Commerce.DataContext;
+using E_Commerce.Middleware;
+using E_Commerce.Repositories.CategoryRepository;
 using E_Commerce.Repository;
 using E_Commerce.Services.Authservice;
+using E_Commerce.Services.CartService;
 using E_Commerce.Services.CategoryService;
 using E_Commerce.Services.EmailService;
 using E_Commerce.Services.JwtServices;
 using E_Commerce.Services.PayMob;
+using E_Commerce.Services.PaymentService;
 using E_Commerce.Services.ProductService;
 using E_Commerce.UnitOfWork;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 namespace E_Commerce
 {
     public class Program
@@ -24,7 +30,6 @@ namespace E_Commerce
             var builder = WebApplication.CreateBuilder(args);
 
             // Controllers
-            builder.Services.AddControllers();
             builder.Services.AddControllers().AddJsonOptions(options => {
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             });
@@ -51,19 +56,22 @@ namespace E_Commerce
             builder.Services.AddScoped<IUserRepo, UserRepo>();
             builder.Services.AddScoped<IRefreshTokenRepo, RefreshTokenRepo>();
             builder.Services.AddScoped<IRevokedTokenRepo, RevokedTokenRepo>();
+            builder.Services.AddScoped<IOrderRepo, OrderRepo>();
+            builder.Services.AddScoped<ICategoryRepo, CategoryRepo>();
 
 
             // Unit of Work
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork.UnitOfWork>();
 
             // Services
-            //after builder.Services.AddAuthorization();
-
             builder.Services.AddSingleton<IJwtService, E_Commerce.Services.JwtServices.JwtService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
             builder.Services.AddHttpClient<IPaymobService, PaymobService>();
             builder.Services.AddScoped<IProductService, ProdService>();
+            builder.Services.AddScoped<ICartService, CartServices>();
+            builder.Services.AddScoped<ICategoryService, CategoryService>();
+            builder.Services.AddHttpClient<IPaymentService, PaymentSer>();
 
             //  JWT Authentication
             builder.Services
@@ -117,6 +125,38 @@ namespace E_Commerce
 
             builder.Services.AddAuthorization();
 
+            // CORS
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll", policyBuilder =>
+                {
+                    policyBuilder
+                        .AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
+
+            // Rate Limiting
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: context.Request.Headers["Authorization"].ToString(),
+                        factory: partition => new FixedWindowRateLimiterOptions
+                        {
+                            AutoReplenishment = true,
+                            PermitLimit = 100,
+                            Window = TimeSpan.FromMinutes(1)
+                        }));
+
+                options.OnRejected = async (context, token) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    await context.HttpContext.Response.WriteAsJsonAsync(new { message = "Too many requests. Please try again later." }, cancellationToken: token);
+                };
+            });
+
             var app = builder.Build();
 
             // Ensure DB schema is up-to-date before seeding
@@ -134,7 +174,16 @@ namespace E_Commerce
                 app.UseSwaggerUI();
             }
 
+            // Middleware Pipeline
+            app.UseMiddleware<RequestResponseLoggingMiddleware>();
+            app.UseMiddleware<GlobalExceptionMiddleware>();
+
             app.UseHttpsRedirection();
+
+            // CORS must be before Auth
+            app.UseCors("AllowAll");
+
+            app.UseRateLimiter();
 
             // Important: Authentication Before Authorization
             app.UseAuthentication();

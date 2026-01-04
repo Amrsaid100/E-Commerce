@@ -1,5 +1,7 @@
-﻿using E_Commerce.Entities;
+﻿using E_Commerce.Dtos.Payment;
+using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,32 +13,43 @@ namespace E_Commerce.Controllers
     {
         private readonly IConfiguration _config;
         private readonly IUnitOfWork work;
+        private readonly ILogger<PaymentController> _logger;
 
-        public PaymentController(IUnitOfWork work, IConfiguration config)
+        public PaymentController(IUnitOfWork work, IConfiguration config, ILogger<PaymentController> logger)
         {
             this.work = work;
             _config = config;
+            _logger = logger;
         }
 
         [HttpPost("success")]
-        public async Task<IActionResult> PaymentSuccess(int orderId,string secret)
+        public async Task<IActionResult> PaymentSuccess(int orderId, string secret)
         {
             if (secret != _config["Payment:Secret"])
-                return Unauthorized();
-            var order = await work.Orders
-                .GetByIdAsync(orderId); // include Items
+            {
+                _logger.LogWarning($"Invalid secret for order {orderId}");
+                return Unauthorized("Invalid secret");
+            }
 
+            var order = await work.Orders.GetByIdAsync(orderId);
             if (order == null)
+            {
+                _logger.LogWarning($"Order {orderId} not found");
                 return NotFound();
+            }
 
             if (order.Status == OrderStatus.Paid)
-                return Ok(); // prevent double payment
+            {
+                _logger.LogInformation($"Order {orderId} already paid");
+                return Ok("Payment already processed");
+            }
 
-            // 🔹 Reduce stock
+            // Reduce stock
             foreach (var item in order.Items)
             {
-                var variant = await work.ProductVariants
-                    .GetByIdAsync(item.ProductVariantId);
+                var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                if (variant == null)
+                    return BadRequest($"Product variant {item.ProductVariantId} not found");
 
                 if (variant.Quantity < item.Quantity)
                     return BadRequest("Out of stock");
@@ -44,66 +57,98 @@ namespace E_Commerce.Controllers
                 variant.Quantity -= item.Quantity;
             }
 
-            // 🔹 Mark order paid
+            // Mark order paid
             order.Status = OrderStatus.Paid;
             order.PaymentReference = Guid.NewGuid().ToString();
 
-            // 🔹 Clear cart
+            // Clear cart
             var cart = await work.Carts.GetByUserIdAsync(order.UserId);
-            cart.Items.Clear();
+            if (cart != null)
+                cart.Items.Clear();
 
             await work.SaveChangesAsync();
+            _logger.LogInformation($"Order {orderId} payment successful");
             return Ok("Payment successful");
         }
-
 
         [HttpPost("fail")]
         public async Task<IActionResult> PaymentFail(int orderId)
         {
             var order = await work.Orders.GetByIdAsync(orderId);
             if (order == null)
+            {
+                _logger.LogWarning($"Order {orderId} not found");
                 return NotFound();
+            }
 
             order.Status = OrderStatus.Failed;
-
             await work.SaveChangesAsync();
+
+            _logger.LogWarning($"Order {orderId} payment failed");
             return Ok("Payment failed");
         }
 
         [HttpPost("webhook")]
-        public async Task<IActionResult> PaymobWebhook([FromBody] dynamic data)
+        public async Task<IActionResult> PaymobWebhook([FromBody] PaymobWebhookDto data)
         {
-            int orderId = data?.order?.id;
-            bool success = data?.success == true;
-
-            var order = await work.Orders.GetByIdAsync(orderId);
-            if (order == null) return NotFound();
-
-            if (success)
+            if (data == null)
             {
-                order.Status = OrderStatus.Paid;
-                order.PaymentReference = data.id;
+                _logger.LogWarning("Webhook received with null data");
+                return BadRequest("Invalid webhook payload");
+            }
 
-                var cart = await work.Carts.GetByUserIdAsync(order.UserId);
-                cart.Items.Clear();
+            try
+            {
+                int orderId = data.Order?.Id ?? 0;
+                bool success = data.Success;
 
-                // Reduce stock
-                foreach (var item in order.Items)
+                if (orderId == 0)
                 {
-                    var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
-                    variant.Quantity -= item.Quantity;
+                    _logger.LogWarning("Webhook received with invalid order ID");
+                    return BadRequest("Invalid order ID");
                 }
+
+                var order = await work.Orders.GetByIdAsync(orderId);
+                if (order == null)
+                {
+                    _logger.LogWarning($"Order {orderId} not found in webhook");
+                    return NotFound();
+                }
+
+                if (success)
+                {
+                    order.Status = OrderStatus.Paid;
+                    order.PaymentReference = data.TransactionId ?? Guid.NewGuid().ToString();
+
+                    // Reduce stock
+                    foreach (var item in order.Items)
+                    {
+                        var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                        if (variant != null)
+                            variant.Quantity -= item.Quantity;
+                    }
+
+                    // Clear cart
+                    var cart = await work.Carts.GetByUserIdAsync(order.UserId);
+                    if (cart != null)
+                        cart.Items.Clear();
+
+                    _logger.LogInformation($"Webhook processed successfully for order {orderId}");
+                }
+                else
+                {
+                    order.Status = OrderStatus.Failed;
+                    _logger.LogWarning($"Webhook received payment failure for order {orderId}");
+                }
+
+                await work.SaveChangesAsync();
+                return Ok(new { message = "Webhook processed" });
             }
-            else
+            catch (Exception ex)
             {
-                order.Status = OrderStatus.Failed;
+                _logger.LogError($"Error processing webhook: {ex.Message}");
+                return StatusCode(500, new { message = "Error processing webhook" });
             }
-
-            await work.SaveChangesAsync();
-            return Ok();
         }
-
-
     }
-
 }

@@ -30,7 +30,7 @@ namespace E_Commerce.Services.PayMob
                 delivery_needed = false,
                 amount_cents = (int)(order.TotalAmount * 100),
                 currency = _config["Paymob:Currency"],
-                merchant_order_id = order.OrderId
+                merchant_order_id = order.Id
             };
 
             var orderResponse = await _http.PostAsJsonAsync(
