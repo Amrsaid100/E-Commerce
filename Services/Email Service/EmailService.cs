@@ -80,7 +80,7 @@ namespace E_Commerce.Services.EmailService
                     Credentials = new NetworkCredential(smtpUser, smtpPass),
                     EnableSsl = true,
                     DeliveryMethod = SmtpDeliveryMethod.Network,
-                    Timeout = 10000 // 10 seconds
+                    Timeout = 30000 // 10 seconds
                 };
 
                 using var mailMessage = new MailMessage
@@ -98,24 +98,27 @@ namespace E_Commerce.Services.EmailService
                 
                 _logger.LogInformation($"Email successfully sent to {toEmail}");
             }
-            catch (SmtpAuthenticationException ex)
-            {
-                _logger.LogError($"SMTP Authentication failed: {ex.Message}. Check SmtpUser and SmtpPass (Gmail App Password)");
-                throw new InvalidOperationException(
-                    "Email authentication failed. Make sure you're using Gmail App Password (not regular password). " +
-                    "Enable 2FA and generate App Password from myaccount.google.com/apppasswords",
-                    ex
-                );
-            }
             catch (SmtpException ex)
             {
-                _logger.LogError($"SMTP error sending email: {ex.Message}");
+                _logger.LogError(ex, "SMTP error sending email. StatusCode={StatusCode}", ex.StatusCode);
+
+                // Gmail 5.7.0 / Authentication Required message
+                if (ex.Message.Contains("5.7.0", StringComparison.OrdinalIgnoreCase) ||
+                    ex.Message.Contains("Authentication", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "Email authentication failed. Use a Gmail App Password (not your regular password). " +
+                        "Enable 2FA then generate App Password from myaccount.google.com/apppasswords",
+                        ex
+                    );
+                }
+
                 throw new InvalidOperationException(
-                    $"Failed to send email via SMTP. Host='{smtpHost}', Port={smtpPort}. " +
-                    "Check network connectivity and SMTP configuration.",
+                    $"Failed to send email via SMTP. Host='{smtpHost}', Port={smtpPort}. Check SMTP settings/network.",
                     ex
                 );
             }
+
             catch (Exception ex)
             {
                 _logger.LogError($"Unexpected error sending email: {ex.Message}");

@@ -55,6 +55,7 @@ namespace E_Commerce.Controllers
                 user.Id,
                 user.Email,
                 user.Name,
+                user.ProfileImage,
                 Role = user.Role.ToString()
             });
         }
@@ -62,13 +63,14 @@ namespace E_Commerce.Controllers
         public class UpdateProfileDto
         {
             public string? Name { get; set; }
+            public string? ProfileImage { get; set; }
         }
 
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
-                return BadRequest("Name is required.");
+            if (dto == null)
+                return BadRequest("Invalid data.");
 
             var userId = GetUserId();
             var user = await _uow.Users.GetByIdAsync(userId);
@@ -76,11 +78,16 @@ namespace E_Commerce.Controllers
             if (user == null)
                 return NotFound();
 
-            user.Name = dto.Name.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Name))
+                user.Name = dto.Name.Trim();
+            
+            if (!string.IsNullOrWhiteSpace(dto.ProfileImage))
+                user.ProfileImage = dto.ProfileImage;
+
             user.UpdatedAt = DateTime.UtcNow;
 
             await _uow.SaveChangesAsync();
-            return Ok("Profile updated successfully");
+            return Ok(new { message = "Profile updated successfully", profileImage = user.ProfileImage });
         }
 
         // ========================= Cart =========================
@@ -181,7 +188,7 @@ namespace E_Commerce.Controllers
 
             return Ok(new
             {
-                OrderId = order.OrderId,
+                OrderId = order.Id,
                 PaymentUrl = paymentUrl
             });
         }

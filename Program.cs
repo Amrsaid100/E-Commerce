@@ -73,11 +73,14 @@ namespace E_Commerce
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddHttpClient<IPaymentService, PaymentSer>();
 
-            //  JWT Authentication
+            // Clear default inbound claim type map to prevent automatic claim renaming
+            System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
+            // JWT Authentication
             builder.Services
-     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-     .AddJwtBearer(options =>
-     {
+                .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
          var issuer = builder.Configuration["Jwt:Issuer"];
          var audience = builder.Configuration["Jwt:Audience"];
          var key = builder.Configuration["Jwt:Key"];
@@ -128,12 +131,11 @@ namespace E_Commerce
             // CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy("AllowAll", policyBuilder =>
-                {
-                    policyBuilder
-                        .AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
+                options.AddPolicy("AllowAngular", policy => {
+                    policy.WithOrigins("http://localhost:4200")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
                 });
             });
 
@@ -181,7 +183,7 @@ namespace E_Commerce
             app.UseHttpsRedirection();
 
             // CORS must be before Auth
-            app.UseCors("AllowAll");
+            app.UseCors("AllowAngular");
 
             app.UseRateLimiter();
 

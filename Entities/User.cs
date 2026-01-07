@@ -25,7 +25,7 @@ namespace E_Commerce.Entities
         public string? Name { get; set; }
 
         public Cart? Cart { get; set; }
-
+        public string? ProfileImage { get; set; }
         public List<Order> Orders { get; set; } = new();
         // Refresh token
         public string? RefreshToken { get; set; }

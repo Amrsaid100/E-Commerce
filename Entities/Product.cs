@@ -23,4 +23,4 @@ namespace E_Commerce.Entities
 
         public List<ProductImage> Images { get; set; } = new();
     }
-}
+}   

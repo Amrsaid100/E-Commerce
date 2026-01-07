@@ -192,7 +192,7 @@ namespace E_Commerce.Services.CartService
             //Cart.Items.Clear();
             await work.SaveChangesAsync();
 
-            return NewOrder.OrderId;
+            return NewOrder.Id;
         }
 
         public async Task FromGuestCartToUserCart(int UserId, CartDto GuestCart)
