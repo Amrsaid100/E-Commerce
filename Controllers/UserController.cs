@@ -27,11 +27,22 @@ namespace E_Commerce.Controllers
         // ===== Helpers: read from JwtService claims (sub, email) =====
         private int GetUserId()
         {
-            var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (string.IsNullOrWhiteSpace(sub) || !int.TryParse(sub, out var userId))
-                throw new UnauthorizedAccessException("Invalid token: missing/invalid sub claim.");
+            // Use the EXACT claim type from the token
+            var userId = User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+                          ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue("sub")
+                          ?? User.FindFirstValue("id");
 
-            return userId;
+            if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out var id))
+            {
+                // Debug: log all claims
+                var allClaims = string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"));
+                Console.WriteLine($"❌ Cannot find user ID. Available claims: {allClaims}");
+                throw new UnauthorizedAccessException("Cannot extract user ID from token.");
+            }
+
+            Console.WriteLine($"✅ Found user ID: {id}");
+            return id;
         }
 
         private string GetUserEmail()
@@ -90,55 +101,125 @@ namespace E_Commerce.Controllers
             return Ok(new { message = "Profile updated successfully", profileImage = user.ProfileImage });
         }
 
+        // ========================= Upload Profile Image =========================
+        [HttpPost("profile/upload-image")]
+        public async Task<IActionResult> UploadProfileImage(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file provided");
+
+            // Validate file type
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+            var fileExtension = Path.GetExtension(file.FileName).ToLower();
+            
+            if (!allowedExtensions.Contains(fileExtension))
+                return BadRequest("Only image files are allowed (jpg, jpeg, png, gif)");
+
+            // Validate file size (max 5MB)
+            if (file.Length > 5 * 1024 * 1024)
+                return BadRequest("File size must not exceed 5MB");
+
+            try
+            {
+                // Convert to base64
+                using (var ms = new MemoryStream())
+                {
+                    await file.CopyToAsync(ms);
+                    var fileBytes = ms.ToArray();
+                    var base64String = Convert.ToBase64String(fileBytes);
+                    var dataUrl = $"data:{file.ContentType};base64,{base64String}";
+
+                    var userId = GetUserId();
+                    var user = await _uow.Users.GetByIdAsync(userId);
+
+                    if (user == null)
+                        return NotFound("User not found");
+
+                    user.ProfileImage = dataUrl;
+                    user.UpdatedAt = DateTime.UtcNow;
+
+                    await _uow.SaveChangesAsync();
+
+                    return Ok(new { message = "Image uploaded successfully", profileImage = dataUrl });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Failed to upload image", details = ex.Message });
+            }
+        }
+
         // ========================= Cart =========================
+        // Update the UserController GetCart() method - line 152
         [HttpGet("cart")]
         public async Task<IActionResult> GetCart()
         {
             var userId = GetUserId();
             var cart = await _uow.Carts.GetByUserIdAsync(userId);
 
-            if (cart == null)
-                return Ok(new { Items = new List<object>(), Total = 0m });
+            if (cart == null || cart.Items == null || !cart.Items.Any())
+                return Ok(new
+                {
+                    items = new List<object>(),
+                    totalPrice = 0m,
+                    totalQuantity = 0
+                });
 
             return Ok(new
             {
-                cart.Id,
-                Items = cart.Items.Select(i => new
+                items = cart.Items.Select(i => new
                 {
-                    i.Id,
-                    i.ProductVariantId,
-                    i.ProductName,
-                    i.Quantity,
-                    i.UnitPrice,
-                    Total = i.TotalPrice
+                    productVariantId = i.ProductVariantId,
+                    productName = i.ProductName,
+                    quantity = i.Quantity,
+                    unitPrice = i.UnitPrice
                 }),
-                Total = cart.Items.Sum(i => i.TotalPrice)
+                totalPrice = cart.Items.Sum(i => i.UnitPrice * i.Quantity),
+                totalQuantity = cart.Items.Sum(i => i.Quantity)
             });
         }
 
         // ========================= Orders =========================
+        // Correct implementation - make sure GetMyOrders() handles null safely
         [HttpGet("orders")]
         public async Task<IActionResult> GetMyOrders()
         {
-            var userId = GetUserId();
-            var order = await _uow.Orders.GetOrderByUserId(userId);
-
-            if (order == null)
-                return Ok(new List<UserOrderDto>());
-
-            var dto = new UserOrderDto
+            try
             {
-                TotalPrice = order.TotalAmount,
-                Items = order.Items.Select(i => new OrderItemDto
-                {
-                    ProductVariantId = i.ProductVariantId,
-                    ProductName = i.ProductName ?? "",
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitePrice
-                }).ToList()
-            };
+                var userId = GetUserId();
+                var orders = await _uow.Orders.GetOrderByUserId(userId);
 
-            return Ok(dto);
+                if (orders == null || orders.Count == 0)
+                    return Ok(new { items = new List<OrderItemDto>(), totalPrice = 0m });
+
+                var items = new List<OrderItemDto>();
+                decimal totalPrice = 0m;
+
+                foreach (var order in orders)
+                {
+                    if (order.Items != null)
+                    {
+                        foreach (var item in order.Items)
+                        {
+                            var orderItemDto = new OrderItemDto
+                            {
+                                ProductVariantId = item.ProductVariantId,
+                                ProductName = item.ProductName ?? string.Empty,
+                                Quantity = item.Quantity,
+                                UnitPrice = item.UnitePrice
+                            };
+                            items.Add(orderItemDto);
+                            totalPrice += item.UnitePrice * item.Quantity;
+                        }
+                    }
+                }
+
+                return Ok(new { items = items, totalPrice = totalPrice });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error fetching orders", error = ex.Message });
+            }
         }
 
         // ========================= Checkout + Payment =========================

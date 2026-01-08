@@ -23,11 +23,18 @@ namespace E_Commerce.Controllers
         // ===== Helper: get userId from JWT (sub) =====
         private int GetUserId()
         {
-            var sub = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            if (string.IsNullOrWhiteSpace(sub) || !int.TryParse(sub, out var userId))
-                throw new UnauthorizedAccessException("Invalid token: missing/invalid sub.");
+            // Try all possible claim names
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+                          ?? User.FindFirstValue("sub")
+                          ?? User.FindFirstValue("id");
 
-            return userId;
+            if (!int.TryParse(userId, out var id))
+            {
+                throw new UnauthorizedAccessException("Cannot extract user ID from token.");
+            }
+
+            return id;
         }
 
         // ========================= Get My Cart =========================

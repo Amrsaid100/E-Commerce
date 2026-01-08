@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 namespace E_Commerce.Services.JwtServices
 {
     public class JwtService : IJwtService
@@ -25,21 +26,18 @@ namespace E_Commerce.Services.JwtServices
         public string GenerateToken(User user)
         {
             var claims = new List<Claim>
-        {
-            // user id
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            // email
-            new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            // role
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            //Add name to Database  
-            new Claim("name", user.Name ?? string.Empty),
-            // jti revoke
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-
-            new Claim("id", user.Id.ToString()),
-
-        };
+    {
+        // Add NameIdentifier FIRST - this is critical
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
+        new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
+        new Claim(ClaimTypes.Role, user.Role.ToString()),
+        new Claim("name", user.Name ?? string.Empty),
+        new Claim(ClaimTypes.Name, user.Name ?? string.Empty),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        new Claim("id", user.Id.ToString()),
+    };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -56,5 +54,4 @@ namespace E_Commerce.Services.JwtServices
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
-
 }

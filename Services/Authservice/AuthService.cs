@@ -44,23 +44,32 @@ namespace E_Commerce.Services.Authservice
         // Generate OTP & send email
         public async Task<bool> RequestOtpAsync(RequestOtpDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Email))
+            if (string.IsNullOrWhiteSpace(dto.Email))
                 return false;
 
-            var email = dto.Email.Trim();
+            var email = dto.Email.Trim().ToLower();
+            var otp = GenerateOtp();
 
-            // validate format
-            try { _ = new MailAddress(email); }
-            catch { return false; }
-
-            var otp = _random.Next(100000, 999999).ToString();
             otpStore[email] = (otp, DateTime.UtcNow.AddMinutes(5));
 
             _logger.LogInformation($"OTP generated for {email}");
 
-            await _email.SendEmailAsync(email, "Your OTP Code",
-                $"<p>Your OTP is: <b>{otp}</b></p><p>Expires in 5 minutes.</p>");
+            // Send email in background - DON'T WAIT
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _email.SendEmailAsync(email, "Your OTP Code",
+                        $"<p>Your OTP is: <b>{otp}</b></p><p>Expires in 5 minutes.</p>");
+                    _logger.LogInformation($"Email sent to {email}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Failed to send email: {ex.Message}");
+                }
+            });
 
+            // Return immediately - email sending happens in background
             return true;
         }
 
@@ -121,7 +130,8 @@ namespace E_Commerce.Services.Authservice
 
             return new AuthResponseDto
             {
-                Token = accessToken,
+                AccessToken = accessToken,
+                Token=accessToken,
                 RefreshToken = refreshRaw,
                 UserId = user.Id,
                 Email = user.Email,
@@ -245,6 +255,13 @@ namespace E_Commerce.Services.Authservice
             await _uow.SaveChangesAsync();
             _logger.LogInformation($"Admin {adminEmail} demoted to User by {ownerEmail}");
             return true;
+        }
+        // Add this private method inside the AuthService class
+
+        private string GenerateOtp()
+        {
+            // Generates a 6-digit numeric OTP
+            return _random.Next(100000, 999999).ToString();
         }
     }
 }

@@ -88,10 +88,9 @@ namespace E_Commerce.Services.CartService
         {
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
 
-            if (Cart == null)
+            if (Cart == null || Cart.Items == null || !Cart.Items.Any())
             {
-
-                return null;
+                return new CartDto { Items = new List<CartItemDto>(), TotalPrice = 0m };
             }
             else
             {
@@ -110,14 +109,13 @@ namespace E_Commerce.Services.CartService
                     CartDtoList.Add(cdt);
                 }
 
-
                 return new CartDto()
                 {
                     Items=CartDtoList,
                     TotalPrice=totalPrice,
+                    TotalQuantity=CartDtoList.Sum(x=>x.Quantity)
                 };
             }
-
         }
 
         public async Task ClearCart (int UserId)

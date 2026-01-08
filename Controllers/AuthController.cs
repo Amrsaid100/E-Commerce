@@ -73,7 +73,9 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> Logout()
         {
             // userId is in "sub"
-            var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+          ?? User.FindFirst("sub")?.Value
+          ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var jti = User.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
             var expClaim = User.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
 

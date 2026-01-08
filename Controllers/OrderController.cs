@@ -34,7 +34,7 @@ namespace E_Commerce.Controllers
                 return BadRequest("Invalid user ID");
 
             var orders = await _unitofwork.Orders.GetOrderByUserId(userId);
-            if (orders == null || !orders.Items.Any())
+            if (orders == null || !orders.Any())
                 return NotFound("No orders found for this user");
 
             return Ok(orders);

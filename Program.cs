@@ -87,7 +87,7 @@ namespace E_Commerce
 
          options.TokenValidationParameters = new TokenValidationParameters
          {
-             ValidateIssuer = true,
+             ValidateIssuer = true, 
              ValidateAudience = true,
              ValidateLifetime = true,
              ValidateIssuerSigningKey = true,
@@ -101,29 +101,43 @@ namespace E_Commerce
              )
          };
 
-         //  IMPORTANT: check revoked jti on every request
-         options.Events = new JwtBearerEvents
-         {
-             OnTokenValidated = async context =>
-             {
-                 var db = context.HttpContext.RequestServices
-                     .GetRequiredService<EcommerceDbContext>();
+                    //  IMPORTANT: check revoked jti on every request
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Console.WriteLine($"❌ Auth Failed: {context.Exception.Message}");
+                            return Task.CompletedTask;
+                        },
+                        OnTokenValidated = async context =>
+                        {
+                            Console.WriteLine($"✅ Token Validated - User: {context.Principal?.Identity?.Name}");
 
-                 var jti = context.Principal?
-                     .FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)
-                     ?.Value;
+                            var db = context.HttpContext.RequestServices
+                                .GetRequiredService<EcommerceDbContext>();
 
-                 if (!string.IsNullOrEmpty(jti))
-                 {
-                     var revoked = await db.RevokedTokens
-                         .AnyAsync(x => x.Jti == jti && x.ExpiresAtUtc > DateTime.UtcNow);
+                            var jti = context.Principal?
+                                .FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)
+                                ?.Value;
 
-                     if (revoked)
-                         context.Fail("Token revoked");
-                 }
-             }
-         };
-     });
+                            Console.WriteLine($"🔍 Checking JTI: {jti}");
+
+                            if (!string.IsNullOrEmpty(jti))
+                            {
+                                var revoked = await db.RevokedTokens
+                                    .AnyAsync(x => x.Jti == jti && x.ExpiresAtUtc > DateTime.UtcNow);
+
+                                Console.WriteLine($"🔍 Token revoked? {revoked}");
+
+                                if (revoked)
+                                {
+                                    Console.WriteLine($"❌ Token is REVOKED!");
+                                    context.Fail("Token revoked");
+                                }
+                            }
+                        }
+                    };
+                });
 
 
             builder.Services.AddAuthorization();
