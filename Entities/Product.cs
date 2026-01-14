@@ -8,6 +8,8 @@ namespace E_Commerce.Entities
     {
         [Key]
         public int Id { get; set; }
+        [Required, MaxLength(300)]
+        public string Name { get; set; }
 
         [Required, MaxLength(200)]
         public string Description { get; set; }
@@ -17,10 +19,13 @@ namespace E_Commerce.Entities
 
         public decimal Price { get; set; }
 
+        // Shipping cost set by Owner/Admin
+        public decimal ShippingCost { get; set; } = 0m;
+
         public List<ProductVariant> Variants { get; set; } = new();
 
         public Category? Category { get; set; }
 
         public List<ProductImage> Images { get; set; } = new();
     }
-}   
+}

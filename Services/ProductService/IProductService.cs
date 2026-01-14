@@ -9,5 +9,6 @@ namespace E_Commerce.Services.ProductService
         Task<bool> UpdateProductAsync(int productId, ProductDto newProduct);
         Task<ProductDto?> GetProductBySearchAsync(string search);
         Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string categoryName);
+        Task<List<ProductDto>> GetAllProductsAsync();
     }
 }

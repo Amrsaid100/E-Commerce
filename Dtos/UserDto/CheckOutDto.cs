@@ -19,5 +19,7 @@ namespace E_Commerce.Dtos.UserDto
         [Required]
         public string Apartment { get; set; }
 
+        [Required]
+        public string Neighborhood { get; set; }  // NEW
     }
 }

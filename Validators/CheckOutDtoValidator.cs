@@ -32,5 +32,9 @@ public class CheckOutDtoValidator : AbstractValidator<CheckOutDto>
         RuleFor(x => x.Apartment)
             .NotEmpty().WithMessage("Apartment number is required")
             .Matches(@"^\d{1,5}$").WithMessage("Apartment number must be 1 to 5 digits"); 
+        
+        RuleFor(x => x.Neighborhood)
+            .NotEmpty().WithMessage("Neighborhood is required")
+            .Length(2, 50).WithMessage("Neighborhood must be between 2 and 50 characters");
     }
 }

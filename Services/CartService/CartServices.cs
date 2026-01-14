@@ -175,6 +175,7 @@ namespace E_Commerce.Services.CartService
                 Street = CheckOut.Street,
                 City = CheckOut.City,
                 PhoneNumber = CheckOut.PhoneNumber,
+                Neighborhood = CheckOut.Neighborhood,
                 TotalAmount = totalPrice,
                 Status = OrderStatus.PendingPayment,
                 CreatedAt = DateTime.UtcNow

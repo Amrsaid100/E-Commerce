@@ -82,6 +82,42 @@ namespace E_Commerce.Controllers
             return Ok(cartDto);
         }
 
+        // ========================= Increase Quantity =========================
+        // POST /api/cart/items/increase
+        [HttpPost("items/increase")]
+        public async Task<IActionResult> IncreaseQuantity([FromBody] CartItemDto item)
+        {
+            if (item == null)
+                return BadRequest("Item cannot be null.");
+
+            var userId = GetUserId();
+            
+            // Add one more of the same item
+            item.Quantity = 1;
+            await _cartService.AddToCart(userId, item);
+
+            var cartDto = await _cartService.GetUserCart(userId);
+            return Ok(cartDto);
+        }
+
+        // ========================= Decrease Quantity =========================
+        // POST /api/cart/items/decrease
+        [HttpPost("items/decrease")]
+        public async Task<IActionResult> DecreaseQuantity([FromBody] CartItemDto item)
+        {
+            if (item == null)
+                return BadRequest("Item cannot be null.");
+
+            var userId = GetUserId();
+            
+            // Remove one of the same item
+            item.Quantity = 1;
+            await _cartService.RemoveFromCart(userId, item);
+
+            var cartDto = await _cartService.GetUserCart(userId);
+            return Ok(cartDto);
+        }
+
         // ========================= Clear Cart =========================
         // DELETE /api/cart/clear
         [HttpDelete("clear")]

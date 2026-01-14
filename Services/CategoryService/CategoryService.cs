@@ -120,14 +120,8 @@ namespace E_Commerce.Services.CategoryService
             if (category == null)
                 return false;
 
-            //  make sure not exist any products link with this Category
-            if (!string.IsNullOrWhiteSpace(category.Name))
-            {
-                var products = await work.Products.GetProductsByCategoryAsync(category.Name);
-                if (products != null && products.Any())
-                    return false; 
-            }
-
+            // Delete the category even if it has products
+            // The products will remain but without a category reference
             await work.Categories.DeleteAsync(category);
             await work.SaveChangesAsync();
             return true;

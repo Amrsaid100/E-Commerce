@@ -27,7 +27,8 @@ namespace E_Commerce.Entities
 
         [Required]
         public string Street { get; set; } = default!;
-
+        [Required]
+        public string? Neighborhood { get; set; } = default!;
         [Required]
         public string PhoneNumber { get; set; } = default!;
 

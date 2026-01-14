@@ -2,6 +2,7 @@
 {
     public class NewProductImageDto
     {
-        public string ImageUrl { get; set; }
+        // Base64 encoded image data (e.g., "data:image/jpeg;base64,...")
+        public string ImageData { get; set; }
     }
 }

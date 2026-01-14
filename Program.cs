@@ -46,7 +46,9 @@ namespace E_Commerce
             builder.Services.AddDbContext<EcommerceDbContext>(options =>
             {
                 options.UseSqlServer(
-                    builder.Configuration.GetConnectionString("EcommerceConnectionString"));
+      builder.Configuration.GetConnectionString("EcommerceConnectionString"),
+      sqlOptions => sqlOptions.CommandTimeout(180) 
+  );
             });
 
             // Repositories
@@ -146,7 +148,7 @@ namespace E_Commerce
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins("http://localhost:4200")
+                    policy.WithOrigins("http://localhost:4201", "http://localhost:4200")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -159,6 +161,7 @@ namespace E_Commerce
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: context.Request.Headers["Authorization"].ToString(),
+
                         factory: partition => new FixedWindowRateLimiterOptions
                         {
                             AutoReplenishment = true,
@@ -179,7 +182,29 @@ namespace E_Commerce
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<EcommerceDbContext>();
-                db.Database.Migrate();
+                
+                if (app.Environment.IsDevelopment())
+                {
+                    try
+                    {
+                        // فقط في بيئة التطوير
+                        if (db.Database.GetPendingMigrations().Any())
+                        {
+                            Console.WriteLine("🔄 Applying pending migrations...");
+                            db.Database.Migrate();
+                            Console.WriteLine("✅ Migrations applied successfully");
+                        }
+                        else
+                        {
+                            Console.WriteLine("ℹ️ No pending migrations");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Migration failed: {ex.Message}");
+                        // لا ترمي Exception في Production
+                    }
+                }
             }
 
             await DbSeeder.SeedOwnerAsync(app);

@@ -19,7 +19,7 @@ namespace E_Commerce.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> GetAllOrders()
         {
             var orders = await _unitofwork.Orders.GetAllAsync();
@@ -41,7 +41,7 @@ namespace E_Commerce.Controllers
         }
 
         [HttpPut("status")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> UpdateOrderStatus([FromQuery] int orderId, [FromQuery] OrderStatus status)
         {
             if (orderId <= 0)

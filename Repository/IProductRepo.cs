@@ -6,5 +6,6 @@ namespace E_Commerce.Repository
     {
         Task<List<Product>> GetProductsByCategoryAsync(string categoryname);
         Task <Product> GetProductBySearchAsync (string searchString);
+        Task<List<Product>> GetAllWithIncludesAsync();
     }
 }

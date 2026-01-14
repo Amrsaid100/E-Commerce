@@ -180,7 +180,7 @@ namespace E_Commerce.Controllers
         }
 
         // ========================= Orders =========================
-        // Correct implementation - make sure GetMyOrders() handles null safely
+        // Return all user orders with full details matching admin order structure
         [HttpGet("orders")]
         public async Task<IActionResult> GetMyOrders()
         {
@@ -190,31 +190,26 @@ namespace E_Commerce.Controllers
                 var orders = await _uow.Orders.GetOrderByUserId(userId);
 
                 if (orders == null || orders.Count == 0)
-                    return Ok(new { items = new List<OrderItemDto>(), totalPrice = 0m });
+                    return Ok(new List<object>());
 
-                var items = new List<OrderItemDto>();
-                decimal totalPrice = 0m;
-
-                foreach (var order in orders)
+                // Return orders in same format as admin orders
+                var ordersList = orders.Select(o => new
                 {
-                    if (order.Items != null)
+                    id = o.Id,
+                    date = o.CreatedAt,
+                    status = o.Status.ToString(),
+                    totalPrice = o.TotalAmount,
+                    user = new { name = o.User?.Name ?? "Unknown" },
+                    items = (o.Items ?? new List<OrderItem>()).Select(i => new
                     {
-                        foreach (var item in order.Items)
-                        {
-                            var orderItemDto = new OrderItemDto
-                            {
-                                ProductVariantId = item.ProductVariantId,
-                                ProductName = item.ProductName ?? string.Empty,
-                                Quantity = item.Quantity,
-                                UnitPrice = item.UnitePrice
-                            };
-                            items.Add(orderItemDto);
-                            totalPrice += item.UnitePrice * item.Quantity;
-                        }
-                    }
-                }
+                        productVariantId = i.ProductVariantId,
+                        productName = i.ProductName ?? string.Empty,
+                        quantity = i.Quantity,
+                        unitPrice = i.UnitePrice
+                    }).ToList()
+                }).ToList();
 
-                return Ok(new { items = items, totalPrice = totalPrice });
+                return Ok(ordersList);
             }
             catch (Exception ex)
             {

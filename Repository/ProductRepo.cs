@@ -25,7 +25,21 @@ namespace E_Commerce.Repository
                 .Where(c => c.Name.ToLower() == categorname.ToLower())
                 .Select(c => c.Id)
                 .FirstOrDefaultAsync();
-            return await context.Products.Where(p => p.CategoryId == CategoryId).ToListAsync();
+            return await context.Products
+                .Where(p => p.CategoryId == CategoryId)
+                .Include(p => p.Images)
+                .Include(p => p.Variants)
+                .Include(p => p.Category)
+                .ToListAsync();
+        }
+
+        public async Task<List<Product>> GetAllWithIncludesAsync()
+        {
+            return await context.Products
+                .Include(p => p.Images)
+                .Include(p => p.Variants)
+                .Include(p => p.Category)
+                .ToListAsync();
         }
     }
 }

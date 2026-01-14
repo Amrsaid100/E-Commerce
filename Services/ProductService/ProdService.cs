@@ -21,6 +21,9 @@ namespace E_Commerce.Services.ProductService
             if (productDto.Variants == null || !productDto.Variants.Any())
                 throw new ArgumentException("Product must have at least one variant.", nameof(productDto));
 
+            if (string.IsNullOrWhiteSpace(productDto.CategoryName))
+                throw new ArgumentException("CategoryName is required.", nameof(productDto));
+
             var variants = productDto.Variants.Select(v => new ProductVariant
             {
                 Price = v.Price,
@@ -29,10 +32,21 @@ namespace E_Commerce.Services.ProductService
                 Size = v.Size
             }).ToList();
 
+            // Resolve category by name and ensure CategoryId is set
+            var category = await work.Categories.GetByNameAsync(productDto.CategoryName);
+            if (category == null)
+            {
+                category = new Category { Name = productDto.CategoryName };
+                await work.Categories.AddAsync(category);
+                await work.SaveChangesAsync();
+            }
+
             var product = new Product
             {
+                Name = productDto.Name,  // إضافة هذا السطر
                 Description = productDto.Description,
-                Category = productDto.Category, 
+                CategoryId = category.Id,
+                Category = category,
                 Price = productDto.Price,
                 Variants = variants
             };
@@ -42,7 +56,7 @@ namespace E_Commerce.Services.ProductService
             {
                 product.Images = productDto.Images.Select(img => new ProductImage
                 {
-                    ImageUrl = img.ImageUrl
+                    ImageUrl = img.ImageData // Store Base64 data
                 }).ToList();
             }
 
@@ -59,6 +73,15 @@ namespace E_Commerce.Services.ProductService
 
             var products = await work.Products.GetProductsByCategoryAsync(categoryName);
 
+            if (products == null || !products.Any())
+                return new List<ProductDto>();
+
+            return products.Select(MapToDto).ToList();
+        }
+
+        public async Task<List<ProductDto>> GetAllProductsAsync()
+        {
+            var products = await work.Products.GetAllWithIncludesAsync();
             if (products == null || !products.Any())
                 return new List<ProductDto>();
 
@@ -97,11 +120,26 @@ namespace E_Commerce.Services.ProductService
             if (product == null)
                 return false;
 
+            product.Name = newProduct.Name;  // إضافة هذا السطر
             product.Description = newProduct.Description;
             product.Price = newProduct.Price;
 
+            // Update category if CategoryName provided
+            if (!string.IsNullOrWhiteSpace(newProduct.CategoryName))
+            {
+                var category = await work.Categories.GetByNameAsync(newProduct.CategoryName);
+                if (category == null)
+                {
+                    category = new Category { Name = newProduct.CategoryName };
+                    await work.Categories.AddAsync(category);
+                    await work.SaveChangesAsync();
+                }
+                product.CategoryId = category.Id;
+                product.Category = category;
+            }
+
             // Replace Variants
-            if (newProduct.Variants != null)
+            if (newProduct.Variants != null && newProduct.Variants.Any())
             {
                 product.Variants ??= new List<ProductVariant>();
                 product.Variants.Clear();
@@ -118,8 +156,8 @@ namespace E_Commerce.Services.ProductService
                 }
             }
 
-            // Replace Images 
-            if (newProduct.Images != null)
+            // Replace Images (only if new images provided)
+            if (newProduct.Images != null && newProduct.Images.Any())
             {
                 product.Images ??= new List<ProductImage>();
                 product.Images.Clear();
@@ -128,7 +166,7 @@ namespace E_Commerce.Services.ProductService
                 {
                     product.Images.Add(new ProductImage
                     {
-                        ImageUrl = img.ImageUrl
+                        ImageUrl = img.ImageData // Store Base64 data
                     });
                 }
             }
@@ -150,12 +188,15 @@ namespace E_Commerce.Services.ProductService
 
             var imageDtos = product.Images?.Select(img => new NewProductImageDto
             {
-                ImageUrl = img.ImageUrl
+                ImageData = img.ImageUrl
             }).ToList() ?? new List<NewProductImageDto>();
 
             return new ProductDto
             {
+                Id = product.Id,
+                Name = product.Name,  
                 Description = product.Description,
+                CategoryName = product.Category?.Name ?? "",
                 Price = product.Price,
                 Variants = variantDtos,
                 Images = imageDtos
