@@ -19,10 +19,13 @@ namespace E_Commerce.Repositories.CategoryRepository
             if (string.IsNullOrWhiteSpace(name))
                 return null;
 
+            var normalized = name.Trim().ToLower();
+
             return await context.Categories
+                                .AsNoTracking()
                                 .FirstOrDefaultAsync(c =>
                                     c.Name != null &&
-                                    c.Name.ToLower() == name.ToLower());
+                                    c.Name.ToLower() == normalized);
         }
     }
 }

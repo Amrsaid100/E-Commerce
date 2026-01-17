@@ -148,7 +148,7 @@ namespace E_Commerce
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins("http://localhost:4201", "http://localhost:4200")
+                    policy.WithOrigins("http://localhost:51413", "http://localhost:4200")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -160,7 +160,7 @@ namespace E_Commerce
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: context.Request.Headers["Authorization"].ToString(),
+                        partitionKey: context.Request.Headers["Authorization"].ToString() ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
 
                         factory: partition => new FixedWindowRateLimiterOptions
                         {
@@ -224,7 +224,8 @@ namespace E_Commerce
             // CORS must be before Auth
             app.UseCors("AllowAngular");
 
-            app.UseRateLimiter();
+            // Temporarily disable Rate Limiter for debugging
+            // app.UseRateLimiter();
 
             // Important: Authentication Before Authorization
             app.UseAuthentication();

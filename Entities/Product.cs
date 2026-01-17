@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Entities
 {
+    [Index(nameof(CategoryId))]
+    [Index(nameof(Name))]
     public class Product
     {
         [Key]
