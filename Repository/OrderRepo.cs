@@ -1,4 +1,4 @@
-﻿using E_Commerce.DataContext;
+using E_Commerce.DataContext;
 using E_Commerce.Dtos.UserDto;
 using E_Commerce.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +11,14 @@ namespace E_Commerce.Repository
         public OrderRepo(EcommerceDbContext context) : base(context)
         {
             this.context = context;
+        }
+
+        public async Task<Order?> GetByIdWithItemsAsync(int orderId)
+        {
+            return await context.Set<Order>()
+                .Include(o => o.Items)
+                .ThenInclude(i => i.ProductVariant)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
         public async Task<List<Order>> GetOrderByUserId(int UserId)

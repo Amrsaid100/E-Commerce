@@ -1,4 +1,4 @@
-﻿using E_Commerce.Dtos.Payment;
+using E_Commerce.Dtos.Payment;
 using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +31,7 @@ namespace E_Commerce.Controllers
                 return Unauthorized("Invalid secret");
             }
 
-            var order = await work.Orders.GetByIdAsync(orderId);
+            var order = await work.Orders.GetByIdWithItemsAsync(orderId);
             if (order == null)
             {
                 _logger.LogWarning($"Order {orderId} not found");
@@ -108,7 +108,7 @@ namespace E_Commerce.Controllers
                     return BadRequest("Invalid order ID");
                 }
 
-                var order = await work.Orders.GetByIdAsync(orderId);
+                var order = await work.Orders.GetByIdWithItemsAsync(orderId);
                 if (order == null)
                 {
                     _logger.LogWarning($"Order {orderId} not found in webhook");
