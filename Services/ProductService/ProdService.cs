@@ -1,4 +1,5 @@
-﻿using E_Commerce.Dtos.ProductDtos;
+﻿using E_Commerce.Dtos.Helpers;
+using E_Commerce.Dtos.ProductDtos;
 using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 
@@ -43,7 +44,7 @@ namespace E_Commerce.Services.ProductService
 
             var product = new Product
             {
-                Name = productDto.Name,  // إضافة هذا السطر
+                Name = productDto.Name,
                 Description = productDto.Description,
                 CategoryId = category.Id,
                 Category = category,
@@ -51,7 +52,7 @@ namespace E_Commerce.Services.ProductService
                 Variants = variants
             };
 
-            // Images ( NewProductDto)
+            // Images (NewProductDto)
             if (productDto.Images != null && productDto.Images.Any())
             {
                 product.Images = productDto.Images.Select(img => new ProductImage
@@ -100,6 +101,15 @@ namespace E_Commerce.Services.ProductService
             return MapToDto(product);
         }
 
+        public async Task<ProductDto?> GetProductByIdAsync(int productId)
+        {
+            var product = await work.Products.GetByIdAsync(productId);
+            if (product == null)
+                return null;
+
+            return MapToDto(product);
+        }
+
         public async Task<bool> RemoveProductAsync(int productId)
         {
             var product = await work.Products.GetByIdAsync(productId);
@@ -120,7 +130,7 @@ namespace E_Commerce.Services.ProductService
             if (product == null)
                 return false;
 
-            product.Name = newProduct.Name;  // إضافة هذا السطر
+            product.Name = newProduct.Name;
             product.Description = newProduct.Description;
             product.Price = newProduct.Price;
 
@@ -175,6 +185,23 @@ namespace E_Commerce.Services.ProductService
             return true;
         }
 
+        public async Task<PagedResult<ProductDto>> GetPagedProductsAsync(
+            PaginationParams paginationParams,
+            string? categoryName = null,
+            string? search = null)
+        {
+            var (products, totalCount) = await work.Products.GetPagedProductsAsync(paginationParams, categoryName, search);
+
+            var productDtos = products.Select(MapToDto).ToList();
+
+            return new PagedResult<ProductDto>(
+                paginationParams.PageNumber,
+                paginationParams.PageSize,
+                totalCount,
+                productDtos
+            );
+        }
+
         // Mapping
         private ProductDto MapToDto(Product product)
         {
@@ -194,7 +221,7 @@ namespace E_Commerce.Services.ProductService
             return new ProductDto
             {
                 Id = product.Id,
-                Name = product.Name,  
+                Name = product.Name,
                 Description = product.Description,
                 CategoryName = product.Category?.Name ?? "",
                 Price = product.Price,

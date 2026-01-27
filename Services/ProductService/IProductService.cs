@@ -1,4 +1,5 @@
-﻿using E_Commerce.Dtos.ProductDtos;
+﻿using E_Commerce.Dtos.Helpers;
+using E_Commerce.Dtos.ProductDtos;
 
 namespace E_Commerce.Services.ProductService
 {
@@ -8,7 +9,9 @@ namespace E_Commerce.Services.ProductService
         Task<bool> RemoveProductAsync(int productId);
         Task<bool> UpdateProductAsync(int productId, ProductDto newProduct);
         Task<ProductDto?> GetProductBySearchAsync(string search);
+        Task<ProductDto?> GetProductByIdAsync(int productId);
         Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string categoryName);
         Task<List<ProductDto>> GetAllProductsAsync();
+        Task<PagedResult<ProductDto>> GetPagedProductsAsync(PaginationParams paginationParams, string? categoryName = null, string? search = null);
     }
 }

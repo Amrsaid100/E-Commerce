@@ -1,4 +1,5 @@
-﻿using E_Commerce.Dtos.ProductDtos;
+﻿using E_Commerce.Dtos.Helpers;
+using E_Commerce.Dtos.ProductDtos;
 using E_Commerce.Services.ProductService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,41 +17,70 @@ namespace E_Commerce.Controllers
             _prodService = prodService;
         }
 
-        // GET: /api/product?categoryName=Men  OR  /api/product?search=shirt  OR  /api/product (all)
+        // GET: /api/product?pageNumber=1&pageSize=12&categoryName=Men&search=shirt
+        // Supports pagination, filtering by category, and search
         [HttpGet]
-        public async Task<IActionResult> GetProducts([FromQuery] string? categoryName, [FromQuery] string? search)
+        public async Task<IActionResult> GetProducts(
+            [FromQuery] PaginationParams paginationParams,
+            [FromQuery] string? categoryName,
+            [FromQuery] string? search)
         {
-            if (!string.IsNullOrWhiteSpace(search))
+            try
             {
-                var product = await _prodService.GetProductBySearchAsync(search);
+                var pagedResult = await _prodService.GetPagedProductsAsync(paginationParams, categoryName, search);
+
+                if (pagedResult.Data == null || !pagedResult.Data.Any())
+                {
+                    return Ok(new PagedResult<ProductDto>(
+                        paginationParams.PageNumber,
+                        paginationParams.PageSize,
+                        0,
+                        new List<ProductDto>()
+                    ));
+                }
+
+                return Ok(pagedResult);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving products", error = ex.Message });
+            }
+        }
+
+        // GET: /api/product/{id}
+        // Get a single product by ID
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetProductById(int id)
+        {
+            try
+            {
+                var product = await _prodService.GetProductByIdAsync(id);
                 if (product == null)
-                    return NotFound(new { message = "Product not found." });
+                    return NotFound(new { message = $"Product with ID {id} not found." });
 
                 return Ok(product);
             }
-
-            if (!string.IsNullOrWhiteSpace(categoryName))
+            catch (Exception ex)
             {
-                var products = await _prodService.GetAllProductByCategoryNameAsync(categoryName);
-                if (products == null || !products.Any())
-                    return NotFound(new { message = "No products found for the specified category." });
-
-                return Ok(products);
+                return StatusCode(500, new { message = "Error retrieving product", error = ex.Message });
             }
-
-            // If no params, return all products
-            var allProducts = await _prodService.GetAllProductsAsync();
-            return Ok(allProducts);
         }
 
         // GET: /api/product/all
-        // Admin/Owner listing endpoint to see all products
+        // Admin/Owner listing endpoint to see all products (without pagination)
         [HttpGet("all")]
-        // [Authorize(Roles = "Admin,Owner")]  // Temporarily disabled for debugging
+        [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> GetAll()
         {
-            var items = await _prodService.GetAllProductsAsync();
-            return Ok(items);
+            try
+            {
+                var items = await _prodService.GetAllProductsAsync();
+                return Ok(items);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error retrieving all products", error = ex.Message });
+            }
         }
 
         [HttpPost]
@@ -63,9 +93,9 @@ namespace E_Commerce.Controllers
                 return BadRequest(new { message = "Invalid data", errors = errors.Select(e => e.ErrorMessage) });
             }
 
-            if (string.IsNullOrWhiteSpace(productForm.Name) ||  // إضافة هذا الشرط
-                string.IsNullOrWhiteSpace(productForm.Description) || 
-                string.IsNullOrWhiteSpace(productForm.CategoryName) || 
+            if (string.IsNullOrWhiteSpace(productForm.Name) ||
+                string.IsNullOrWhiteSpace(productForm.Description) ||
+                string.IsNullOrWhiteSpace(productForm.CategoryName) ||
                 productForm.Price <= 0)
             {
                 return BadRequest(new { message = "Name, Description, CategoryName, and Price are required" });
@@ -112,7 +142,7 @@ namespace E_Commerce.Controllers
             try
             {
                 var created = await _prodService.AddProductAsync(product);
-                return Ok(created);
+                return CreatedAtAction(nameof(GetProductById), new { id = created.Id }, created);
             }
             catch (Exception ex)
             {
@@ -136,11 +166,10 @@ namespace E_Commerce.Controllers
                 if (!updated)
                     return NotFound(new { message = "Product not found." });
 
-                var updatedProduct = await _prodService.GetAllProductsAsync();
-                var result = updatedProduct.FirstOrDefault(p => p.Id == id);
-                
-                if (result != null)
-                    return Ok(result);
+                var updatedProduct = await _prodService.GetProductByIdAsync(id);
+
+                if (updatedProduct != null)
+                    return Ok(updatedProduct);
                 else
                     return Ok(new { message = "Product updated successfully" });
             }
@@ -154,11 +183,18 @@ namespace E_Commerce.Controllers
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> RemoveProduct(int id)
         {
-            var removed = await _prodService.RemoveProductAsync(id);
-            if (!removed)
-                return NotFound(new { message = "Product not found." });
+            try
+            {
+                var removed = await _prodService.RemoveProductAsync(id);
+                if (!removed)
+                    return NotFound(new { message = "Product not found." });
 
-            return NoContent();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error deleting product", error = ex.Message });
+            }
         }
     }
 }

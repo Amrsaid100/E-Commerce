@@ -1,13 +1,14 @@
 ﻿using E_Commerce.DataContext;
+using E_Commerce.Dtos.Helpers;
 using E_Commerce.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Repository
 {
-    public class ProductRepo:GenericRepo<Product>,IProductRepo
+    public class ProductRepo : GenericRepo<Product>, IProductRepo
     {
         private readonly EcommerceDbContext context;
-        public ProductRepo(EcommerceDbContext context):base(context)
+        public ProductRepo(EcommerceDbContext context) : base(context)
         {
             this.context = context;
         }
@@ -21,11 +22,16 @@ namespace E_Commerce.Repository
 
             // Guard against null Description values to avoid NullReferenceException
             var product = await context.Products
-                .Where(p => p.Description != null && p.Description.Trim().ToLower().Contains(searchResult))
+                .Include(p => p.Category)
+                .Include(p => p.Images)
+                .Include(p => p.Variants)
+                .Where(p => (p.Name != null && p.Name.Trim().ToLower().Contains(searchResult)) ||
+                           (p.Description != null && p.Description.Trim().ToLower().Contains(searchResult)))
                 .FirstOrDefaultAsync();
 
             return product;
         }
+
         public async Task<List<Product>> GetProductsByCategoryAsync(string categorname)
         {
             if (string.IsNullOrWhiteSpace(categorname))
@@ -62,6 +68,48 @@ namespace E_Commerce.Repository
                 .Include(p => p.Variants)
                 .OrderBy(p => p.Id)
                 .ToListAsync();
+        }
+
+        public async Task<(List<Product> products, int totalCount)> GetPagedProductsAsync(
+            PaginationParams paginationParams,
+            string? categoryName = null,
+            string? search = null)
+        {
+            var query = context.Products
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(p => p.Category)
+                .Include(p => p.Images)
+                .Include(p => p.Variants)
+                .AsQueryable();
+
+            // Apply category filter if provided
+            if (!string.IsNullOrWhiteSpace(categoryName))
+            {
+                var normalized = categoryName.Trim().ToLower();
+                query = query.Where(p => p.Category != null && p.Category.Name.ToLower() == normalized);
+            }
+
+            // Apply search filter if provided
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(p =>
+                    (p.Name != null && p.Name.ToLower().Contains(searchLower)) ||
+                    (p.Description != null && p.Description.ToLower().Contains(searchLower)));
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var products = await query
+                .OrderBy(p => p.Id)
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToListAsync();
+
+            return (products, totalCount);
         }
     }
 }
