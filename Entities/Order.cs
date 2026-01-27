@@ -9,6 +9,10 @@ namespace E_Commerce.Entities
     {
         PendingPayment,
         Paid,
+        Processing,
+        Shipped,
+        Delivered,
+        Cancelled,
         Failed
     }
     public class Order

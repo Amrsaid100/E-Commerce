@@ -4,7 +4,8 @@ namespace E_Commerce.Dtos.CartDto
 {
     public class CartItemDto
     {
-        public int ProductVariantId { get; set; }
+        public int? ProductVariantId { get; set; } // اجعلها nullable
+        public int? ProductId { get; set; } // أضف ProductId
         [Required]
         public string ProductName { get; set; }
         [Required]

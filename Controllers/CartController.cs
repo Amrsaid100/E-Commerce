@@ -20,18 +20,24 @@ namespace E_Commerce.Controllers
             _cartService = cartService;
         }
 
-        // ===== Helper: get userId from JWT (sub) =====
-        private int GetUserId()
+        // ===== Helper: try to get userId from JWT (sub) =====
+        // Returns null when extraction/parsing fails instead of throwing, so callers can return 401.
+        private int? GetUserId()
         {
             // Try all possible claim names
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
                           ?? User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
                           ?? User.FindFirstValue("sub")
                           ?? User.FindFirstValue("id");
 
-            if (!int.TryParse(userId, out var id))
+            if (string.IsNullOrEmpty(userIdStr))
             {
-                throw new UnauthorizedAccessException("Cannot extract user ID from token.");
+                return null;
+            }
+
+            if (!int.TryParse(userIdStr, out var id))
+            {
+                return null;
             }
 
             return id;
@@ -43,7 +49,8 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> GetMyCart()
         {
             var userId = GetUserId();
-            var cartDto = await _cartService.GetUserCart(userId);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            var cartDto = await _cartService.GetUserCart(userId.Value);
 
             if (cartDto == null)
                 return Ok(new CartDto { Items = new List<CartItemDto>(), TotalPrice = 0m });
@@ -58,12 +65,18 @@ namespace E_Commerce.Controllers
         {
             if (item == null)
                 return BadRequest("Item cannot be null.");
-
             var userId = GetUserId();
-            await _cartService.AddToCart(userId, item);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            try
+            {
+                await _cartService.AddToCart(userId.Value, item);
+            }
+            catch (InvalidOperationException inv)
+            {
+                return BadRequest(new { message = inv.Message });
+            }
 
-         
-            var cartDto = await _cartService.GetUserCart(userId);
+            var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);
         }
 
@@ -76,9 +89,10 @@ namespace E_Commerce.Controllers
                 return BadRequest("Item cannot be null.");
 
             var userId = GetUserId();
-            await _cartService.RemoveFromCart(userId, item);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            await _cartService.RemoveFromCart(userId.Value, item);
 
-            var cartDto = await _cartService.GetUserCart(userId);
+            var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);
         }
 
@@ -91,12 +105,13 @@ namespace E_Commerce.Controllers
                 return BadRequest("Item cannot be null.");
 
             var userId = GetUserId();
-            
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+
             // Add one more of the same item
             item.Quantity = 1;
-            await _cartService.AddToCart(userId, item);
+            await _cartService.AddToCart(userId.Value, item);
 
-            var cartDto = await _cartService.GetUserCart(userId);
+            var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);
         }
 
@@ -109,12 +124,13 @@ namespace E_Commerce.Controllers
                 return BadRequest("Item cannot be null.");
 
             var userId = GetUserId();
-            
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+
             // Remove one of the same item
             item.Quantity = 1;
-            await _cartService.RemoveFromCart(userId, item);
+            await _cartService.RemoveFromCart(userId.Value, item);
 
-            var cartDto = await _cartService.GetUserCart(userId);
+            var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);
         }
 
@@ -124,7 +140,8 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> Clear()
         {
             var userId = GetUserId();
-            await _cartService.ClearCart(userId);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            await _cartService.ClearCart(userId.Value);
 
             return Ok(new CartDto { Items = new List<CartItemDto>(), TotalPrice = 0m });
         }
@@ -138,7 +155,8 @@ namespace E_Commerce.Controllers
                 return BadRequest("Invalid checkout data.");
 
             var userId = GetUserId();
-            var orderId = await _cartService.CheckOutAsync(userId, dto);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            var orderId = await _cartService.CheckOutAsync(userId.Value, dto);
 
             if (orderId == 0)
                 return BadRequest("Cart is empty.");
@@ -156,9 +174,10 @@ namespace E_Commerce.Controllers
                 return BadRequest("Cart cannot be null.");
 
             var userId = GetUserId();
-            await _cartService.FromGuestCartToUserCart(userId, cart);
+            if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
+            await _cartService.FromGuestCartToUserCart(userId.Value, cart);
 
-            var cartDto = await _cartService.GetUserCart(userId);
+            var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);
         }
     }

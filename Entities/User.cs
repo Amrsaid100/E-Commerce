@@ -26,6 +26,8 @@ namespace E_Commerce.Entities
 
         public Cart? Cart { get; set; }
         public string? ProfileImage { get; set; }
+        [MaxLength(30)]
+        public string? PhoneNumber { get; set; }
         public List<Order> Orders { get; set; } = new();
         // Refresh token
         public string? RefreshToken { get; set; }

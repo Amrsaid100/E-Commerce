@@ -1,4 +1,4 @@
-﻿using E_Commerce.DataContext;
+using E_Commerce.DataContext;
 using E_Commerce.Middleware;
 using E_Commerce.Repositories.CategoryRepository;
 using E_Commerce.Repository;
@@ -148,7 +148,7 @@ namespace E_Commerce
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins("http://localhost:51413", "http://localhost:4200")
+                    policy.WithOrigins("http://localhost:55369", "http://localhost:4200")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -187,17 +187,10 @@ namespace E_Commerce
                 {
                     try
                     {
-                        // فقط في بيئة التطوير
-                        if (db.Database.GetPendingMigrations().Any())
-                        {
-                            Console.WriteLine("🔄 Applying pending migrations...");
-                            db.Database.Migrate();
-                            Console.WriteLine("✅ Migrations applied successfully");
-                        }
-                        else
-                        {
-                            Console.WriteLine("ℹ️ No pending migrations");
-                        }
+                        // Dev only: make sure DB exists + migrations applied (Migrate is idempotent)
+                        Console.WriteLine("🔄 Ensuring database is migrated...");
+                        db.Database.Migrate();
+                        Console.WriteLine("✅ Database ready");
                     }
                     catch (Exception ex)
                     {
@@ -207,7 +200,15 @@ namespace E_Commerce
                 }
             }
 
-            await DbSeeder.SeedOwnerAsync(app);
+            try
+            {
+                await DbSeeder.SeedOwnerAsync(app);
+            }
+            catch (Exception ex)
+            {
+                // Don't crash the whole app if DB is misconfigured/unavailable
+                Console.WriteLine($"❌ Seeding owner failed: {ex.Message}");
+            }
 
             if (app.Environment.IsDevelopment())
             {

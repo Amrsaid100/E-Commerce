@@ -17,42 +17,66 @@ namespace E_Commerce.Services.CartService
         }
         public async Task AddToCart(int UserId, CartItemDto? item)
         {
-            if (item == null)
-                return;
+            try
+            {
+                if (item == null)
+                    return;
 
-            var Cart = await work.Carts.GetByUserIdAsync(UserId);
-            if (Cart == null)
-            {
-                Cart = new Cart()
+                var Cart = await work.Carts.GetByUserIdAsync(UserId);
+                if (Cart == null)
                 {
-                    UserId = UserId,
-                    Items = new List<CartItem>()
-                };
-                await work.Carts.AddAsync(Cart);
-            }
-            
-            
-            var exsitingitem = Cart.Items.FirstOrDefault(c => c.ProductVariantId == item.ProductVariantId);
+                    Cart = new Cart()
+                    {
+                        UserId = UserId,
+                        Items = new List<CartItem>()
+                    };
+                    await work.Carts.AddAsync(Cart);
+                }
 
-            if (exsitingitem != null)
-            {
-                exsitingitem.Quantity += item.Quantity;
-            }
-            else
-            {
-                
-                var Cart_item = new CartItem
+                ProductVariant variant = null;
+                if (item.ProductVariantId.HasValue && item.ProductVariantId.Value > 0)
                 {
-                    CartId = Cart.Id,
-                    ProductVariantId = item.ProductVariantId,
-                    ProductName = item.ProductName,
-                    UnitPrice = item.UnitPrice,
-                    Quantity = item.Quantity,
-                };
-                Cart.Items.Add(Cart_item);
+                    variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId.Value);
+                }
+
+                // إذا لم يوجد variantId أو لم يوجد variant، ابحث عن أول variant للمنتج
+                if (variant == null && item.ProductId.HasValue)
+                {
+                    var allVariants = await work.ProductVariants.GetAllAsync();
+                    variant = allVariants.FirstOrDefault(v => v.ProductId == item.ProductId.Value);
+                }
+
+                if (variant == null)
+                {
+                    throw new InvalidOperationException("No product variant found for this product. Please contact support or add a variant.");
+                }
+
+                var exsitingitem = Cart.Items.FirstOrDefault(c => c.ProductVariantId == variant.Id);
+
+                if (exsitingitem != null)
+                {
+                    exsitingitem.Quantity += item.Quantity;
+                }
+                else
+                {
+                    var Cart_item = new CartItem
+                    {
+                        CartId = Cart.Id,
+                        ProductVariantId = variant.Id,
+                        ProductName = item.ProductName,
+                        UnitPrice = item.UnitPrice,
+                        Quantity = item.Quantity,
+                    };
+                    Cart.Items.Add(Cart_item);
+                }
+
+                await work.SaveChangesAsync();
             }
-            
-            await work.SaveChangesAsync();    
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Exception in AddToCart: " + ex.ToString());
+                throw;
+            }
         }
 
         public async Task RemoveFromCart(int UserId, CartItemDto item)
@@ -199,20 +223,21 @@ namespace E_Commerce.Services.CartService
             if(GuestCart == null || GuestCart.Items == null || !GuestCart.Items.Any()||UserId==0)
                 return;
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
-            List<CartItem> CartItems = new List<CartItem>();
-            foreach(var item in GuestCart.Items)
-            {
-                var cartItem = new CartItem()
-                {
-                    ProductVariantId = item.ProductVariantId,
-                    ProductName = item.ProductName,
-                    UnitPrice = item.UnitPrice,
-                    Quantity = item.Quantity,
-                };
-                CartItems.Add(cartItem);
-            }
             if (Cart == null)
             {
+                // إذا لم يكن لدى المستخدم سلة، أنشئ واحدة جديدة بكل العناصر
+                List<CartItem> CartItems = new List<CartItem>();
+                foreach(var item in GuestCart.Items)
+                {
+                    var cartItem = new CartItem()
+                    {
+                        ProductVariantId = (int)item.ProductVariantId,
+                        ProductName = item.ProductName,
+                        UnitPrice = item.UnitPrice,
+                        Quantity = item.Quantity,
+                    };
+                    CartItems.Add(cartItem);
+                }
                 Cart = new Cart()
                 {
                     UserId = UserId,
@@ -223,7 +248,28 @@ namespace E_Commerce.Services.CartService
             }
             else
             {
-                return;
+                // إذا لدى المستخدم سلة بالفعل، دمج العناصر
+                foreach(var item in GuestCart.Items)
+                {
+                    var existing = Cart.Items.FirstOrDefault(c => c.ProductVariantId == (int)item.ProductVariantId);
+                    if (existing != null)
+                    {
+                        existing.Quantity += item.Quantity;
+                    }
+                    else
+                    {
+                        var cartItem = new CartItem()
+                        {
+                            CartId = Cart.Id,
+                            ProductVariantId = (int)item.ProductVariantId,
+                            ProductName = item.ProductName,
+                            UnitPrice = item.UnitPrice,
+                            Quantity = item.Quantity,
+                        };
+                        Cart.Items.Add(cartItem);
+                    }
+                }
+                await work.SaveChangesAsync();
             }
 
         }

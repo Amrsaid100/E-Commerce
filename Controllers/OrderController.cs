@@ -23,7 +23,16 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> GetAllOrders()
         {
             var orders = await _unitofwork.Orders.GetAllAsync();
-            return Ok(orders);
+            foreach (var order in orders)
+            {
+                order.Items = order.Items ?? new List<OrderItem>();
+                if (order.User == null)
+                {
+                    order.User = await _unitofwork.Users.GetByIdAsync(order.UserId);
+                }
+            }
+            var dtos = orders.Select(E_Commerce.Repository.OrderRepo.ToUserOrderDto).ToList();
+            return Ok(dtos);
         }
 
         [HttpGet("user/{userId:int}")]
@@ -36,8 +45,15 @@ namespace E_Commerce.Controllers
             var orders = await _unitofwork.Orders.GetOrderByUserId(userId);
             if (orders == null || !orders.Any())
                 return NotFound("No orders found for this user");
-
-            return Ok(orders);
+            foreach (var order in orders)
+            {
+                if (order.User == null)
+                {
+                    order.User = await _unitofwork.Users.GetByIdAsync(order.UserId);
+                }
+            }
+            var dtos = orders.Select(E_Commerce.Repository.OrderRepo.ToUserOrderDto).ToList();
+            return Ok(dtos);
         }
 
         [HttpPut("status")]
