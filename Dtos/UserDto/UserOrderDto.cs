@@ -16,5 +16,9 @@ namespace E_Commerce.Dtos.UserDto
         public DateTime CreatedAt { get; set; }
         public UserDto User { get; set; }
         public int ItemCount { get; internal set; }
+        public int? GovernorateId { get; set; }
+        public string? GovernorateName { get; set; }
+        public decimal ShippingCost { get; set; }
+
     }
 }

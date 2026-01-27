@@ -48,5 +48,12 @@ namespace E_Commerce.Entities
         public User? User { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        // Add these properties to Order class
+        public int? GovernorateId { get; set; }
+        public decimal ShippingCost { get; set; }
+
+        // Add navigation property
+        public Governorate? Governorate { get; set; }
+
     }
 }

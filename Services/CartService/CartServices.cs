@@ -158,7 +158,7 @@ namespace E_Commerce.Services.CartService
         }
 
 
-        public async Task<int> CheckOutAsync(int UserId,CheckOutDto CheckOut)
+        public async Task<int> CheckOutAsync(int UserId, CheckOutDto CheckOut)
         {
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
 
@@ -166,18 +166,22 @@ namespace E_Commerce.Services.CartService
             {
                 return 0;
             }
-            //List<OrderItemDto> OrderItemDtos = new List<OrderItemDto>();
+
             List<OrderItem> OrderItems = new List<OrderItem>();
             decimal totalPrice = 0;
-            foreach(var item in Cart.Items)
+
+            foreach (var item in Cart.Items)
             {
-                //var orderItemDto1=new OrderItemDto()
-                //{
-                //    ProductVariantId = item.ProductVariantId,
-                //    ProductName = item.ProductName,
-                //    Quantity = item.Quantity,
-                //    UnitPrice = item.UnitPrice
-                //};
+                // ✅ Stock Decrement Logic - أضف هذا
+                var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                if (variant != null)
+                {
+                    if (variant.Quantity < item.Quantity)
+                    {
+                        throw new InvalidOperationException($"Insufficient stock for {item.ProductName}. Available: {variant.Quantity}, Requested: {item.Quantity}");
+                    }
+                    variant.Quantity -= item.Quantity;
+                }
 
                 var OrderItem1 = new OrderItem()
                 {
@@ -188,9 +192,20 @@ namespace E_Commerce.Services.CartService
                 };
                 totalPrice += item.UnitPrice * item.Quantity;
 
-                //OrderItemDtos.Add(orderItemDto1);
                 OrderItems.Add(OrderItem1);
             }
+
+            // ✅ Shipping Cost Calculation - أضف هذا
+            decimal shippingCost = 0;
+            if (CheckOut.GovernorateId.HasValue && CheckOut.GovernorateId.Value > 0)
+            {
+                var governorate = await work.Governorates.GetGovernorateByIdAsync(CheckOut.GovernorateId.Value);
+                if (governorate != null)
+                {
+                    shippingCost = governorate.ShippingCost;
+                }
+            }
+
             Order NewOrder = new Order()
             {
                 UserId = UserId,
@@ -200,23 +215,19 @@ namespace E_Commerce.Services.CartService
                 City = CheckOut.City,
                 PhoneNumber = CheckOut.PhoneNumber,
                 Neighborhood = CheckOut.Neighborhood,
-                TotalAmount = totalPrice,
+                GovernorateId = CheckOut.GovernorateId,  // جديد
+                ShippingCost = shippingCost,  // جديد
+                TotalAmount = totalPrice + shippingCost,  // عدل هنا
                 Status = OrderStatus.PendingPayment,
                 CreatedAt = DateTime.UtcNow
             };
 
-            //UserOrderDto FinalOrder = new UserOrderDto()
-            //{
-            //    Items = OrderItemDtos,
-            //    TotalPrice = totalPrice
-            //};
-
             await work.Orders.AddAsync(NewOrder);
-            //Cart.Items.Clear();
             await work.SaveChangesAsync();
 
             return NewOrder.Id;
         }
+
 
         public async Task FromGuestCartToUserCart(int UserId, CartDto GuestCart)
         {
@@ -225,7 +236,7 @@ namespace E_Commerce.Services.CartService
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
             if (Cart == null)
             {
-                // إذا لم يكن لدى المستخدم سلة، أنشئ واحدة جديدة بكل العناصر
+              
                 List<CartItem> CartItems = new List<CartItem>();
                 foreach(var item in GuestCart.Items)
                 {

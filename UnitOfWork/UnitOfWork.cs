@@ -20,7 +20,7 @@ namespace E_Commerce.UnitOfWork
         private readonly Lazy<IGenericRepo<OrderItem>> _OrderItem;
         private readonly Lazy<IRefreshTokenRepo> _RefreshTokens;
         private readonly Lazy<IRevokedTokenRepo> _RevokedTokens;
-
+        private readonly Lazy<IGovernorateRepo> _Governorate;
         public UnitOfWork(EcommerceDbContext context)
         {
             this.context = context;
@@ -36,7 +36,7 @@ namespace E_Commerce.UnitOfWork
             _OrderItem = new Lazy<IGenericRepo<OrderItem>>(() => new GenericRepo<OrderItem>(context));
             _RefreshTokens = new Lazy<IRefreshTokenRepo>(() => new RefreshTokenRepo(context));
             _RevokedTokens = new Lazy<IRevokedTokenRepo>(() => new RevokedTokenRepo(context));
-
+            _Governorate = new Lazy<IGovernorateRepo>(() => new GovernorateRepo(context));
         }
 
         public ICartRepo Carts => _Cart.Value;
@@ -49,7 +49,7 @@ namespace E_Commerce.UnitOfWork
         public IGenericRepo<ProductVariant> ProductVariants => _ProductVariant.Value;
         public IRefreshTokenRepo RefreshTokens => _RefreshTokens.Value;
         public IRevokedTokenRepo RevokedTokens => _RevokedTokens.Value;
-
+        public IGovernorateRepo Governorates => _Governorate.Value;
         public IUserRepo Users => _User.Value;                  
 
         public async Task SaveChangesAsync()

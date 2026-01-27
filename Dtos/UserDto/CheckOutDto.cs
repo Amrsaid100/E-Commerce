@@ -21,5 +21,7 @@ namespace E_Commerce.Dtos.UserDto
 
         [Required]
         public string Neighborhood { get; set; }  // NEW
+        public int? GovernorateId { get; set; }  // For shipping calculation
+
     }
 }
