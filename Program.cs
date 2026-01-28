@@ -148,7 +148,7 @@ namespace E_Commerce
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins("http://localhost:59416", "http://localhost:4200")
+                    policy.WithOrigins("http://localhost:55035", "http://localhost:4200")
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
