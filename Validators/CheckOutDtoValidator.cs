@@ -17,10 +17,6 @@ public class CheckOutDtoValidator : AbstractValidator<CheckOutDto>
             .NotEmpty().WithMessage("Phone number is required")
             .Matches(@"^(\+?\d{10,15})$").WithMessage("Phone number is invalid — example: +201234567890");
 
-        RuleFor(x => x.City)
-            .NotEmpty().WithMessage("City is required")
-            .Length(2, 50).WithMessage("City must be between 2 and 50 characters");
-
         RuleFor(x => x.Street)
             .NotEmpty().WithMessage("Street is required")
             .Length(2, 80).WithMessage("Street must be between 2 and 80 characters");

@@ -11,8 +11,6 @@ namespace E_Commerce.Dtos.UserDto
         [Required]
         public string PhoneNumber { get; set; }
         [Required]
-        public string City { get; set; }
-        [Required]
         public string Street { get; set; }
         [Required]
         public string Building { get; set; }

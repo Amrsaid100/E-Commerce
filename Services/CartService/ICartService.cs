@@ -12,5 +12,6 @@ namespace E_Commerce.Services.CartService
         Task ClearCart (int UserId);
         Task <int> CheckOutAsync (int UserId,CheckOutDto CheckOut);
         Task FromGuestCartToUserCart (int UserId,CartDto GuestCart);
+        Task<int> BuyNowAsync(int UserId, BuyNowDto buyNowDto);
     }
 }

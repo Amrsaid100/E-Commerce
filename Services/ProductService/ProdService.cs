@@ -19,52 +19,115 @@ namespace E_Commerce.Services.ProductService
             if (productDto == null)
                 throw new ArgumentNullException(nameof(productDto));
 
+            // Auto-create default variant if none provided
             if (productDto.Variants == null || !productDto.Variants.Any())
-                throw new ArgumentException("Product must have at least one variant.", nameof(productDto));
+            {
+                Console.WriteLine("⚠️ No variants provided, creating default variant");
+                productDto.Variants = new List<NewProductVariantDto>
+                {
+                    new NewProductVariantDto
+                    {
+                        Price = productDto.Price,
+                        Quantity = 100,
+                        Color = "Default",
+                        Size = "One Size"
+                    }
+                };
+            }
 
             if (string.IsNullOrWhiteSpace(productDto.CategoryName))
                 throw new ArgumentException("CategoryName is required.", nameof(productDto));
 
-            var variants = productDto.Variants.Select(v => new ProductVariant
-            {
-                Price = v.Price,
-                Quantity = v.Quantity,
-                Color = v.Color,
-                Size = v.Size
-            }).ToList();
+            // Validate field lengths to match entity constraints
+            if (string.IsNullOrWhiteSpace(productDto.Name))
+                throw new ArgumentException("Product name is required.", nameof(productDto));
+
+            if (productDto.Name.Length > 300)
+                throw new ArgumentException("Product name must be 300 characters or less.", nameof(productDto));
+
+            if (string.IsNullOrWhiteSpace(productDto.Description))
+                throw new ArgumentException("Product description is required.", nameof(productDto));
+
+            if (productDto.Description.Length > 200)
+                throw new ArgumentException("Product description must be 200 characters or less.", nameof(productDto));
+
+            Console.WriteLine($"🔄 Creating product: {productDto.Name} for category: {productDto.CategoryName}");
 
             // Resolve category by name and ensure CategoryId is set
             var category = await work.Categories.GetByNameAsync(productDto.CategoryName);
             if (category == null)
             {
-                category = new Category { Name = productDto.CategoryName };
+                Console.WriteLine($"📦 Creating new category: {productDto.CategoryName}");
+                category = new Category { 
+                    Name = productDto.CategoryName,
+                    Description = $"Auto-generated category for {productDto.CategoryName}"
+                };
                 await work.Categories.AddAsync(category);
                 await work.SaveChangesAsync();
+                Console.WriteLine($"✅ Category created with ID: {category.Id}");
+            }
+            else
+            {
+                Console.WriteLine($"✅ Found existing category with ID: {category.Id}");
             }
 
+            // Create product first - WITHOUT any related entities
             var product = new Product
             {
                 Name = productDto.Name,
                 Description = productDto.Description,
                 CategoryId = category.Id,
-                Category = category,
                 Price = productDto.Price,
-                Variants = variants
+                ShippingCost = productDto.ShippingCost
             };
 
-            // Images (NewProductDto)
-            if (productDto.Images != null && productDto.Images.Any())
-            {
-                product.Images = productDto.Images.Select(img => new ProductImage
-                {
-                    ImageUrl = img.ImageData // Store Base64 data
-                }).ToList();
-            }
-
+            Console.WriteLine($"🔄 Saving product to database...");
             await work.Products.AddAsync(product);
             await work.SaveChangesAsync();
+            Console.WriteLine($"✅ Product saved with ID: {product.Id}");
 
-            return MapToDto(product);
+            // Now add variants separately using direct context access
+            if (productDto.Variants != null && productDto.Variants.Any())
+            {
+                Console.WriteLine($"🔄 Adding {productDto.Variants.Count} variants...");
+                foreach (var v in productDto.Variants)
+                {
+                    var variant = new ProductVariant
+                    {
+                        ProductId = product.Id,
+                        Price = v.Price,
+                        Quantity = v.Quantity,
+                        Color = v.Color ?? "Default",
+                        Size = v.Size ?? "One Size"
+                    };
+                    await work.ProductVariants.AddAsync(variant);
+                }
+                await work.SaveChangesAsync();
+                Console.WriteLine($"✅ Variants saved");
+            }
+
+            // Add images separately
+            if (productDto.Images != null && productDto.Images.Any())
+            {
+                Console.WriteLine($"📸 Adding {productDto.Images.Count} images...");
+                foreach (var img in productDto.Images)
+                {
+                    var image = new ProductImage
+                    {
+                        ProductId = product.Id,
+                        ImageUrl = img.ImageData
+                    };
+                    await work.ProductImages.AddAsync(image);
+                }
+                await work.SaveChangesAsync();
+                Console.WriteLine($"✅ Images saved");
+            }
+
+            // Reload product with all relationships
+            var savedProduct = await work.Products.GetByIdAsync(product.Id);
+            Console.WriteLine($"✅ Product creation complete");
+
+            return MapToDto(savedProduct!);
         }
 
         public async Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string categoryName)
@@ -140,7 +203,10 @@ namespace E_Commerce.Services.ProductService
                 var category = await work.Categories.GetByNameAsync(newProduct.CategoryName);
                 if (category == null)
                 {
-                    category = new Category { Name = newProduct.CategoryName };
+                    category = new Category { 
+                        Name = newProduct.CategoryName,
+                        Description = $"Auto-generated category for {newProduct.CategoryName}"
+                    };
                     await work.Categories.AddAsync(category);
                     await work.SaveChangesAsync();
                 }
@@ -148,37 +214,66 @@ namespace E_Commerce.Services.ProductService
                 product.Category = category;
             }
 
-            // Replace Variants
+            // Replace Variants - IMPORTANT: Clear and recreate to avoid adding duplicates
             if (newProduct.Variants != null && newProduct.Variants.Any())
             {
-                product.Variants ??= new List<ProductVariant>();
-                product.Variants.Clear();
+                // Remove existing variants from database to avoid duplicates
+                if (product.Variants != null && product.Variants.Any())
+                {
+                    var existingVariants = product.Variants.ToList();
+                    foreach (var oldVariant in existingVariants)
+                    {
+                        await work.ProductVariants.DeleteAsync(oldVariant);
+                    }
+                    await work.SaveChangesAsync();
+                }
+
+                product.Variants = new List<ProductVariant>();
 
                 foreach (var v in newProduct.Variants)
                 {
-                    product.Variants.Add(new ProductVariant
+                    // Create new variant - stock is SET to the new value, not added
+                    var newVariant = new ProductVariant
                     {
+                        ProductId = product.Id,
                         Price = v.Price,
-                        Quantity = v.Quantity,
+                        Quantity = v.Quantity, // This SETS the quantity to the new value
                         Color = v.Color,
                         Size = v.Size
-                    });
+                    };
+                    product.Variants.Add(newVariant);
                 }
             }
 
-            // Replace Images (only if new images provided)
+            // Replace Images ONLY if new images are explicitly provided
+            // If Images property is null or empty, keep existing images unchanged
             if (newProduct.Images != null && newProduct.Images.Any())
             {
-                product.Images ??= new List<ProductImage>();
-                product.Images.Clear();
+                Console.WriteLine($"📸 Replacing images: {newProduct.Images.Count} new images");
+                
+                // Clear existing images (EF will handle cascade delete)
+                if (product.Images != null && product.Images.Any())
+                {
+                    product.Images.Clear();
+                }
+                else
+                {
+                    product.Images = new List<ProductImage>();
+                }
 
                 foreach (var img in newProduct.Images)
                 {
-                    product.Images.Add(new ProductImage
+                    var newImage = new ProductImage
                     {
+                        ProductId = product.Id,
                         ImageUrl = img.ImageData // Store Base64 data
-                    });
+                    };
+                    product.Images.Add(newImage);
                 }
+            }
+            else
+            {
+                Console.WriteLine($"📸 No new images provided, keeping existing {product.Images?.Count ?? 0} images");
             }
 
             await work.SaveChangesAsync();

@@ -1,21 +1,27 @@
 ﻿using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
+using E_Commerce.Services.CartService;
+using E_Commerce.Dtos.CartDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace E_Commerce.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/orders")]
     [ApiController]
 
     public class OrderController : ControllerBase
     {
         private readonly IUnitOfWork _unitofwork;
+        private readonly ICartService _cartService;
 
-        public OrderController(IUnitOfWork unitofwork)
+        public OrderController(IUnitOfWork unitofwork, ICartService cartService)
         {
             _unitofwork = unitofwork;
+            _cartService = cartService;
         }
 
         [HttpGet]
@@ -115,6 +121,69 @@ namespace E_Commerce.Controllers
             await _unitofwork.SaveChangesAsync();
 
             return Ok(new { message = "Order cancelled successfully", orderId = order.Id, status = order.Status.ToString() });
+        }
+
+        // ========================= Buy Now Endpoint =========================
+        [HttpPost("buy-now")]
+        [Authorize]
+        public async Task<IActionResult> BuyNow([FromBody] BuyNowDto buyNowDto)
+        {
+            try
+            {
+                // Log the received data for debugging
+                Console.WriteLine($"🔍 BuyNow called with data: {System.Text.Json.JsonSerializer.Serialize(buyNowDto)}");
+
+                if (buyNowDto == null)
+                {
+                    Console.WriteLine("❌ BuyNowDto is null");
+                    return BadRequest("Invalid buy-now data");
+                }
+
+                if (buyNowDto.Item == null)
+                {
+                    Console.WriteLine("❌ BuyNowDto.Item is null");
+                    return BadRequest("Invalid item data");
+                }
+
+                var userId = GetUserId();
+                Console.WriteLine($"🔍 UserId: {userId}");
+
+                var orderId = await _cartService.BuyNowAsync(userId, buyNowDto);
+                if (orderId == 0)
+                {
+                    Console.WriteLine("❌ BuyNowAsync returned 0");
+                    return BadRequest("Buy Now order creation failed");
+                }
+
+                Console.WriteLine($"✅ Order created successfully with ID: {orderId}");
+                return Ok(new { orderId, message = "Buy Now order created successfully" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Console.WriteLine($"❌ InvalidOperationException: {ex.Message}");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Exception in BuyNow: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = "Error processing Buy Now order", error = ex.Message });
+            }
+        }
+
+        // Helper method to extract user ID from JWT token
+        private int GetUserId()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                          ?? User.FindFirstValue("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+                          ?? User.FindFirstValue("sub")
+                          ?? User.FindFirstValue("id");
+            
+            if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+            {
+                throw new UnauthorizedAccessException("Invalid token: missing/invalid user ID.");
+            }
+            return userId;
         }
     }
 

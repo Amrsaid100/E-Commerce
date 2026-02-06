@@ -23,7 +23,6 @@ namespace E_Commerce.Repository
             return await context.Set<Order>()
                 .Include(o => o.Items)
                 .Include(o => o.User)
-                .Include(o => o.Governorate)
                 .ToListAsync();
         }
 
@@ -32,7 +31,6 @@ namespace E_Commerce.Repository
             return await context.Set<Order>()
                 .Include(o => o.Items)
                 .Include(o => o.User)
-                .Include(o => o.Governorate)
                 .ToListAsync();
         }
 
@@ -41,7 +39,6 @@ namespace E_Commerce.Repository
             return await context.Set<Order>()
                 .Include(o => o.Items)
                 .ThenInclude(i => i.ProductVariant)
-                .Include(o => o.Governorate)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
@@ -51,12 +48,13 @@ namespace E_Commerce.Repository
                 .Include(o => o.Items)
                     .ThenInclude(i => i.ProductVariant)
                 .Where(o => o.UserId == userId)
-                .Include(o => o.Governorate)
                 .ToListAsync();
         }
 
         public static Dtos.UserDto.UserOrderDto ToUserOrderDto(Entities.Order order)
         {
+            decimal itemsSubtotal = order.Items?.Sum(i => i.UnitePrice * i.Quantity) ?? 0;
+
             return new Dtos.UserDto.UserOrderDto
             {
                 OrderId = order.Id,
@@ -70,22 +68,14 @@ namespace E_Commerce.Repository
                 TotalPrice = order.TotalAmount,
                 Status = order.Status.ToString(),
                 Email = order.Email,
-                City = order.City,
-                ItemCount = order.Items != null ? order.Items.Sum(i => i.Quantity) : 0,
-                GovernorateId = order.GovernorateId,  // جديد
-                GovernorateName = order.Governorate?.NameAr ?? order.Governorate?.NameEn,  // جديد
-                ShippingCost = order.ShippingCost,  // جديد
-                CreatedAt = order.CreatedAt,
-                PhoneNumber = order.PhoneNumber,
+                
                 Street = order.Street,
                 Neighborhood = order.Neighborhood,
-                User = order.User != null ? new Dtos.UserDto.UserDto
-                {
-                    Id = order.User.Id,
-                    Name = order.User.Name,
-                    Email = order.User.Email,
-                    PhoneNumber = order.User.PhoneNumber
-                } : null!
+                PhoneNumber = order.PhoneNumber,
+                CreatedAt = order.CreatedAt,
+                ItemCount = order.Items != null ? order.Items.Sum(i => i.Quantity) : 0,
+                ShippingCost = order.ShippingCost,
+                GovernorateId = order.GovernorateId
             };
         }
     }

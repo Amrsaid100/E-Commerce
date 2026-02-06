@@ -27,7 +27,7 @@ namespace E_Commerce.Repository
             return await context.Set<T>().ToListAsync();
         }
 
-        public async Task<T> GetByIdAsync(int id)
+        public virtual async Task<T> GetByIdAsync(int id)
         {
             return await context.Set<T>().FindAsync(id);
         }

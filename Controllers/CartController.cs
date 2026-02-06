@@ -156,13 +156,25 @@ namespace E_Commerce.Controllers
 
             var userId = GetUserId();
             if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
-            var orderId = await _cartService.CheckOutAsync(userId.Value, dto);
+            
+            try
+            {
+                var orderId = await _cartService.CheckOutAsync(userId.Value, dto);
 
-            if (orderId == 0)
-                return BadRequest("Cart is empty.");
+                if (orderId == 0)
+                    return BadRequest("Cart is empty.");
 
-           
-            return Ok(new { OrderId = orderId });
+                return Ok(new { OrderId = orderId });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Checkout error: {ex.Message}");
+                return StatusCode(500, new { message = "An error occurred during checkout", error = ex.Message });
+            }
         }
 
         // ========================= Guest -> User =========================
@@ -175,7 +187,24 @@ namespace E_Commerce.Controllers
 
             var userId = GetUserId();
             if (!userId.HasValue) return Unauthorized("Invalid or missing user token.");
-            await _cartService.FromGuestCartToUserCart(userId.Value, cart);
+            try
+            {
+                // Log incoming guest cart for debugging price issues
+                Console.WriteLine($"GuestToUser called for user {userId.Value} - items: {cart.Items?.Count ?? 0}, totalPrice: {cart.TotalPrice}");
+                if (cart.Items != null)
+                {
+                    foreach (var it in cart.Items)
+                    {
+                        Console.WriteLine($" Guest item -> ProductVariantId: {it.ProductVariantId}, ProductId: {it.ProductId}, Quantity: {it.Quantity}, UnitPrice: {it.UnitPrice}");
+                    }
+                }
+                await _cartService.FromGuestCartToUserCart(userId.Value, cart);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Error in GuestToUser: " + ex);
+                throw;
+            }
 
             var cartDto = await _cartService.GetUserCart(userId.Value);
             return Ok(cartDto);

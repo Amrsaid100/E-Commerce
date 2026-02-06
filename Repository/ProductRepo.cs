@@ -13,6 +13,17 @@ namespace E_Commerce.Repository
             this.context = context;
         }
 
+        // Override GetByIdAsync to include related data (Images, Variants, Category)
+        public override async Task<Product> GetByIdAsync(int id)
+        {
+            return await context.Products
+                .AsNoTracking()
+                .Include(p => p.Category)
+                .Include(p => p.Images)
+                .Include(p => p.Variants)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
         public async Task<Product> GetProductBySearchAsync(string searchString)
         {
             if (string.IsNullOrWhiteSpace(searchString))

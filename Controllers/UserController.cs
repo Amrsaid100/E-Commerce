@@ -243,7 +243,7 @@ namespace E_Commerce.Controllers
             {
                 UserId = userId,
                 Email = dto.Email,
-                City = dto.City,
+                
                 Street = dto.Street,
                 PhoneNumber = dto.PhoneNumber,
                 Status = OrderStatus.PendingPayment,

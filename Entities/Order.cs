@@ -27,9 +27,6 @@ namespace E_Commerce.Entities
         public string Email { get; set; } = default!;
 
         [Required]
-        public string City { get; set; } = default!;
-
-        [Required]
         public string Street { get; set; } = default!;
         [Required]
         public string? Neighborhood { get; set; } = default!;
