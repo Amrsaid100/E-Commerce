@@ -89,21 +89,9 @@ namespace E_Commerce.Controllers
         {
             try
             {
-                Console.WriteLine($"📦 Product creation request received:");
-                Console.WriteLine($"   Name: {productForm?.Name}");
-                Console.WriteLine($"   Description: {productForm?.Description}");
-                Console.WriteLine($"   CategoryName: {productForm?.CategoryName}");
-                Console.WriteLine($"   Price: {productForm?.Price}");
-                Console.WriteLine($"   Images count: {productForm?.Images?.Count ?? 0}");
-
                 if (!ModelState.IsValid)
                 {
                     var errors = ModelState.Values.SelectMany(v => v.Errors);
-                    Console.WriteLine("❌ ModelState is invalid:");
-                    foreach (var error in errors)
-                    {
-                        Console.WriteLine($"   - {error.ErrorMessage}");
-                    }
                     return BadRequest(new { message = "Invalid data", errors = errors.Select(e => e.ErrorMessage) });
                 }
 
@@ -112,7 +100,6 @@ namespace E_Commerce.Controllers
                     string.IsNullOrWhiteSpace(productForm.CategoryName) ||
                     productForm.Price <= 0)
                 {
-                    Console.WriteLine("❌ Required fields validation failed");
                     return BadRequest(new { message = "Name, Description, CategoryName, and Price are required" });
                 }
 
@@ -137,17 +124,13 @@ namespace E_Commerce.Controllers
                 };
                 product.Variants.Add(variant);
 
-                Console.WriteLine($"   Variant: {variant.Price}, Qty: {variant.Quantity}, Color: {variant.Color}, Size: {variant.Size}");
-
                 // Convert uploaded files to Base64
                 if (productForm.Images != null && productForm.Images.Count > 0)
                 {
-                    Console.WriteLine($"📸 Processing {productForm.Images.Count} images...");
                     foreach (var file in productForm.Images)
                     {
                         if (file.Length > 5242880) // 5MB limit
                         {
-                            Console.WriteLine($"❌ Image file {file.FileName} exceeds 5MB limit");
                             return BadRequest("Image file size exceeds 5MB limit");
                         }
 
@@ -156,25 +139,16 @@ namespace E_Commerce.Controllers
                             await file.CopyToAsync(ms);
                             var base64 = "data:" + file.ContentType + ";base64," + Convert.ToBase64String(ms.ToArray());
                             product.Images.Add(new NewProductImageDto { ImageData = base64 });
-                            Console.WriteLine($"   ✅ Processed image: {file.FileName} ({file.Length} bytes)");
                         }
                     }
                 }
 
-                Console.WriteLine("🔄 Calling AddProductAsync...");
                 var created = await _prodService.AddProductAsync(product);
-                Console.WriteLine($"✅ Product created successfully with ID: {created.Id}");
                 
                 return CreatedAtAction(nameof(GetProductById), new { id = created.Id }, created);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Product Creation Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
                 return StatusCode(500, new { message = "Error creating product", error = ex.Message, innerError = ex.InnerException?.Message });
             }
         }
@@ -183,21 +157,9 @@ namespace E_Commerce.Controllers
         [Authorize(Roles = "Admin,Owner")]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] ProductDto productDto)
         {
-            Console.WriteLine($"📝 Product update request for ID: {id}");
-            Console.WriteLine($"   Name: {productDto?.Name}");
-            Console.WriteLine($"   Description: {productDto?.Description}");
-            Console.WriteLine($"   Price: {productDto?.Price}");
-            Console.WriteLine($"   Variants count: {productDto?.Variants?.Count ?? 0}");
-            Console.WriteLine($"   Images count: {productDto?.Images?.Count ?? 0}");
-            
             if (!ModelState.IsValid)
             {
                 var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
-                Console.WriteLine("❌ ModelState is invalid:");
-                foreach (var error in errors)
-                {
-                    Console.WriteLine($"   - {error}");
-                }
                 return BadRequest(new { message = "Invalid data", errors });
             }
 
@@ -206,7 +168,6 @@ namespace E_Commerce.Controllers
                 string.IsNullOrWhiteSpace(productDto.Description) || 
                 productDto.Price <= 0)
             {
-                Console.WriteLine("❌ Required fields validation failed");
                 return BadRequest(new { message = "Name, Description and Price are required and must be valid" });
             }
 
@@ -215,12 +176,10 @@ namespace E_Commerce.Controllers
                 var updated = await _prodService.UpdateProductAsync(id, productDto);
                 if (!updated)
                 {
-                    Console.WriteLine($"❌ Product {id} not found");
                     return NotFound(new { message = "Product not found." });
                 }
 
                 var updatedProduct = await _prodService.GetProductByIdAsync(id);
-                Console.WriteLine($"✅ Product {id} updated successfully");
 
                 if (updatedProduct != null)
                     return Ok(updatedProduct);
@@ -229,12 +188,6 @@ namespace E_Commerce.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Product Update Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
                 return StatusCode(500, new { message = "Error updating product", error = ex.Message, innerError = ex.InnerException?.Message });
             }
         }

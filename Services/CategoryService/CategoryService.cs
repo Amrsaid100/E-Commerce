@@ -77,7 +77,13 @@ namespace E_Commerce.Services.CategoryService
             var category = new Category
             {
                 Name = categoryDto.Name,
-                Description = categoryDto.Description
+                Description = categoryDto.Description,
+                SizeType = categoryDto.SizeType,
+                MinSize = categoryDto.MinSize,
+                MaxSize = categoryDto.MaxSize,
+                AvailableSizes = categoryDto.AvailableSizes != null && categoryDto.AvailableSizes.Any() 
+                    ? string.Join(",", categoryDto.AvailableSizes) 
+                    : null
             };
 
             await work.Categories.AddAsync(category);
@@ -106,6 +112,20 @@ namespace E_Commerce.Services.CategoryService
             if (!string.IsNullOrWhiteSpace(categoryDto.Description))
                 category.Description = categoryDto.Description;
 
+            if (categoryDto.SizeType.HasValue)
+                category.SizeType = categoryDto.SizeType.Value;
+
+            if (categoryDto.MinSize.HasValue)
+                category.MinSize = categoryDto.MinSize.Value;
+
+            if (categoryDto.MaxSize.HasValue)
+                category.MaxSize = categoryDto.MaxSize.Value;
+
+            if (categoryDto.AvailableSizes != null)
+                category.AvailableSizes = categoryDto.AvailableSizes.Any() 
+                    ? string.Join(",", categoryDto.AvailableSizes) 
+                    : null;
+
             await work.SaveChangesAsync();
             return true;
         }
@@ -120,10 +140,37 @@ namespace E_Commerce.Services.CategoryService
             if (category == null)
                 return false;
 
-            // Delete the category even if it has products
-            // The products will remain but without a category reference
+            // Get all products in this category
+            var allProducts = await work.Products.GetAllAsync();
+            var productsInCategory = allProducts.Where(p => p.CategoryId == categoryId).ToList();
+
+            // Delete all products (and their variants/images will cascade)
+            foreach (var product in productsInCategory)
+            {
+                // Delete product variants first
+                var allVariants = await work.ProductVariants.GetAllAsync();
+                var productVariants = allVariants.Where(v => v.ProductId == product.Id).ToList();
+                foreach (var variant in productVariants)
+                {
+                    await work.ProductVariants.DeleteAsync(variant);
+                }
+
+                // Delete product images
+                var allImages = await work.ProductImages.GetAllAsync();
+                var productImages = allImages.Where(i => i.ProductId == product.Id).ToList();
+                foreach (var image in productImages)
+                {
+                    await work.ProductImages.DeleteAsync(image);
+                }
+
+                // Delete the product itself
+                await work.Products.DeleteAsync(product);
+            }
+
+            // Now delete the category
             await work.Categories.DeleteAsync(category);
             await work.SaveChangesAsync();
+            
             return true;
         }
 
@@ -155,7 +202,13 @@ namespace E_Commerce.Services.CategoryService
                 Id = category.Id,
                 Name = category.Name,
                 Description = category.Description,
-                ProductCount = products?.Count ?? 0
+                ProductCount = products?.Count ?? 0,
+                SizeType = category.SizeType,
+                MinSize = category.MinSize,
+                MaxSize = category.MaxSize,
+                AvailableSizes = !string.IsNullOrWhiteSpace(category.AvailableSizes) 
+                    ? category.AvailableSizes.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+                    : null
             };
         }
 
@@ -171,7 +224,13 @@ namespace E_Commerce.Services.CategoryService
             {
                 Id = category.Id,
                 Name = category.Name ?? string.Empty, 
-                Description = category.Description
+                Description = category.Description,
+                SizeType = category.SizeType,
+                MinSize = category.MinSize,
+                MaxSize = category.MaxSize,
+                AvailableSizes = !string.IsNullOrWhiteSpace(category.AvailableSizes) 
+                    ? category.AvailableSizes.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+                    : null
             };
         }
     }

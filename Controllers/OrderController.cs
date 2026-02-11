@@ -1,10 +1,14 @@
 ﻿using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 using E_Commerce.Services.CartService;
+using E_Commerce.Services.EmailService;
+using E_Commerce.Services.PayMob;
+using E_Commerce.DataContext;
 using E_Commerce.Dtos.CartDto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -17,11 +21,17 @@ namespace E_Commerce.Controllers
     {
         private readonly IUnitOfWork _unitofwork;
         private readonly ICartService _cartService;
+        private readonly IPaymobPaymentService _paymentService;
+        private readonly IEmailService _emailService;
+        private readonly EcommerceDbContext _db;
 
-        public OrderController(IUnitOfWork unitofwork, ICartService cartService)
+        public OrderController(IUnitOfWork unitofwork, ICartService cartService, IPaymobPaymentService paymentService, IEmailService emailService, EcommerceDbContext db)
         {
             _unitofwork = unitofwork;
             _cartService = cartService;
+            _paymentService = paymentService;
+            _emailService = emailService;
+            _db = db;
         }
 
         [HttpGet]
@@ -80,6 +90,34 @@ namespace E_Commerce.Controllers
             if (!Enum.TryParse<OrderStatus>(request.Status, true, out var status))
                 return BadRequest(new { message = $"Invalid status value: {request.Status}" });
 
+            // ═══════════════ SAFETY GUARD ═══════════════
+            // CRITICAL: Admins CANNOT set Order to Paid via this endpoint.
+            // Order=Paid can ONLY happen through a verified Paymob webhook.
+            // Use the admin payment override endpoint for exceptional cases.
+            if (status == OrderStatus.Paid)
+            {
+                return BadRequest(new { message = "Cannot set order to Paid manually. Orders are marked Paid only by verified payment webhook. Use /api/admin/payments/{id}/override-status for exceptional cases." });
+            }
+
+            // If transitioning to Failed/Cancelled, restore inventory
+            if ((status == OrderStatus.Failed || status == OrderStatus.Cancelled) &&
+                order.Status != OrderStatus.Failed && order.Status != OrderStatus.Cancelled)
+            {
+                var orderWithItems = await _db.Orders
+                    .Include(o => o.Items)
+                    .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                if (orderWithItems != null)
+                {
+                    foreach (var item in orderWithItems.Items)
+                    {
+                        var variant = await _unitofwork.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                        if (variant != null)
+                            variant.Quantity += item.Quantity;
+                    }
+                }
+            }
+
             order.Status = status;
             await _unitofwork.SaveChangesAsync();
 
@@ -110,17 +148,43 @@ namespace E_Commerce.Controllers
             if (orderId <= 0)
                 return BadRequest(new { message = "Invalid order ID" });
 
-            var order = await _unitofwork.Orders.GetByIdAsync(orderId);
+            var order = await _db.Orders
+                .Include(o => o.Items)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
             if (order == null)
                 return NotFound(new { message = "Order not found" });
 
             if (order.Status == OrderStatus.Cancelled)
                 return BadRequest(new { message = "Order is already cancelled" });
 
+            // Restore inventory for all order items
+            foreach (var item in order.Items)
+            {
+                var variant = await _unitofwork.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                if (variant != null)
+                    variant.Quantity += item.Quantity;
+            }
+
             order.Status = OrderStatus.Cancelled;
+
+            // Also sync associated payment status to Canceled
+            var payment = await _db.Payments
+                .FirstOrDefaultAsync(p => p.OrderId == orderId &&
+                    p.Status != PaymentStatus.Canceled &&
+                    p.Status != PaymentStatus.Failed &&
+                    p.Status != PaymentStatus.Refunded);
+
+            if (payment != null)
+            {
+                payment.Status = PaymentStatus.Canceled;
+                payment.ErrorMessage = "Order canceled by admin";
+                payment.UpdatedAt = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Egypt Standard Time");
+            }
+
             await _unitofwork.SaveChangesAsync();
 
-            return Ok(new { message = "Order cancelled successfully", orderId = order.Id, status = order.Status.ToString() });
+            return Ok(new { message = "Order cancelled successfully. Inventory restored.", orderId = order.Id, status = order.Status.ToString() });
         }
 
         // ========================= Buy Now Endpoint =========================
@@ -156,7 +220,46 @@ namespace E_Commerce.Controllers
                 }
 
                 Console.WriteLine($"✅ Order created successfully with ID: {orderId}");
-                return Ok(new { orderId, message = "Buy Now order created successfully" });
+                
+                // Send owner notification email (inline, won't break order flow on failure)
+                try
+                {
+                    var order = await _db.Orders
+                        .Include(o => o.Items)
+                        .Include(o => o.User)
+                        .Include(o => o.Governorate)
+                        .FirstOrDefaultAsync(o => o.Id == orderId);
+                    if (order != null)
+                        await _emailService.SendOwnerNewOrderEmailAsync(order);
+                }
+                catch (Exception emailEx)
+                {
+                    Console.WriteLine($"⚠️ Email notification failed (order still created): {emailEx.Message}");
+                }
+
+                // Check payment method
+                if (buyNowDto.PaymentMethod == "CashOnDelivery")
+                {
+                    return Ok(new { orderId, paymentMethod = "CashOnDelivery", message = "Order placed successfully. Payment will be collected on delivery." });
+                }
+                else
+                {
+                    // Paymob online payment
+                    var idempotencyKey = Request.Headers.TryGetValue("Idempotency-Key", out var headerKey)
+                        ? headerKey.ToString()
+                        : null;
+                    
+                    var session = await _paymentService.CreateSessionAsync(orderId, userId, idempotencyKey);
+                    
+                    return Ok(new
+                    {
+                        orderId,
+                        paymentId = session.PaymentId,
+                        iframeUrl = session.IframeUrl,
+                        idempotencyKey = session.IdempotencyKey,
+                        paymentMethod = "Paymob"
+                    });
+                }
             }
             catch (InvalidOperationException ex)
             {

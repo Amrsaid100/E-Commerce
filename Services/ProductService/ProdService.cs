@@ -22,7 +22,6 @@ namespace E_Commerce.Services.ProductService
             // Auto-create default variant if none provided
             if (productDto.Variants == null || !productDto.Variants.Any())
             {
-                Console.WriteLine("⚠️ No variants provided, creating default variant");
                 productDto.Variants = new List<NewProductVariantDto>
                 {
                     new NewProductVariantDto
@@ -51,24 +50,16 @@ namespace E_Commerce.Services.ProductService
             if (productDto.Description.Length > 200)
                 throw new ArgumentException("Product description must be 200 characters or less.", nameof(productDto));
 
-            Console.WriteLine($"🔄 Creating product: {productDto.Name} for category: {productDto.CategoryName}");
-
             // Resolve category by name and ensure CategoryId is set
             var category = await work.Categories.GetByNameAsync(productDto.CategoryName);
             if (category == null)
             {
-                Console.WriteLine($"📦 Creating new category: {productDto.CategoryName}");
                 category = new Category { 
                     Name = productDto.CategoryName,
                     Description = $"Auto-generated category for {productDto.CategoryName}"
                 };
                 await work.Categories.AddAsync(category);
                 await work.SaveChangesAsync();
-                Console.WriteLine($"✅ Category created with ID: {category.Id}");
-            }
-            else
-            {
-                Console.WriteLine($"✅ Found existing category with ID: {category.Id}");
             }
 
             // Create product first - WITHOUT any related entities
@@ -81,15 +72,12 @@ namespace E_Commerce.Services.ProductService
                 ShippingCost = productDto.ShippingCost
             };
 
-            Console.WriteLine($"🔄 Saving product to database...");
             await work.Products.AddAsync(product);
             await work.SaveChangesAsync();
-            Console.WriteLine($"✅ Product saved with ID: {product.Id}");
 
             // Now add variants separately using direct context access
             if (productDto.Variants != null && productDto.Variants.Any())
             {
-                Console.WriteLine($"🔄 Adding {productDto.Variants.Count} variants...");
                 foreach (var v in productDto.Variants)
                 {
                     var variant = new ProductVariant
@@ -103,13 +91,11 @@ namespace E_Commerce.Services.ProductService
                     await work.ProductVariants.AddAsync(variant);
                 }
                 await work.SaveChangesAsync();
-                Console.WriteLine($"✅ Variants saved");
             }
 
             // Add images separately
             if (productDto.Images != null && productDto.Images.Any())
             {
-                Console.WriteLine($"📸 Adding {productDto.Images.Count} images...");
                 foreach (var img in productDto.Images)
                 {
                     var image = new ProductImage
@@ -120,12 +106,10 @@ namespace E_Commerce.Services.ProductService
                     await work.ProductImages.AddAsync(image);
                 }
                 await work.SaveChangesAsync();
-                Console.WriteLine($"✅ Images saved");
             }
 
             // Reload product with all relationships
             var savedProduct = await work.Products.GetByIdAsync(product.Id);
-            Console.WriteLine($"✅ Product creation complete");
 
             return MapToDto(savedProduct!);
         }
@@ -249,8 +233,6 @@ namespace E_Commerce.Services.ProductService
             // If Images property is null or empty, keep existing images unchanged
             if (newProduct.Images != null && newProduct.Images.Any())
             {
-                Console.WriteLine($"📸 Replacing images: {newProduct.Images.Count} new images");
-                
                 // Clear existing images (EF will handle cascade delete)
                 if (product.Images != null && product.Images.Any())
                 {
@@ -270,10 +252,6 @@ namespace E_Commerce.Services.ProductService
                     };
                     product.Images.Add(newImage);
                 }
-            }
-            else
-            {
-                Console.WriteLine($"📸 No new images provided, keeping existing {product.Images?.Count ?? 0} images");
             }
 
             await work.SaveChangesAsync();
@@ -302,6 +280,7 @@ namespace E_Commerce.Services.ProductService
         {
             var variantDtos = product.Variants?.Select(v => new NewProductVariantDto
             {
+                Id = v.Id,
                 Price = v.Price,
                 Quantity = v.Quantity,
                 Color = v.Color,

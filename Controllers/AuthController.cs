@@ -35,11 +35,15 @@ namespace E_Commerce.Controllers
             catch (InvalidOperationException ex)
             {
                 // SMTP/config issues
-                return StatusCode(502, new { message = ex.Message });
+                return StatusCode(502, new { message = "Failed to send OTP email. Please try again later.", detail = ex.Message });
             }
-            catch (SmtpException)
+            catch (SmtpException ex)
             {
-                return StatusCode(502, new { message = "Email provider rejected authentication. Check SMTP credentials (App Password for Gmail)." });
+                return StatusCode(502, new { message = "Failed to send OTP email. Please try again later.", detail = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to send OTP email. Please try again later.", detail = ex.Message });
             }
         }
 
@@ -114,9 +118,9 @@ namespace E_Commerce.Controllers
                 .PromoteUserToAdminAsync(ownerEmail, dto.Email);
 
             if (!success)
-                return BadRequest("Cannot promote user");
+                return BadRequest(new { message = "Cannot promote user" });
 
-            return Ok("User promoted to Admin");
+            return Ok(new { message = "User promoted to Admin successfully" });
         }
 
         [HttpPost("demote")]
@@ -135,9 +139,9 @@ namespace E_Commerce.Controllers
                 .DemoteAdminToUserAsync(ownerEmail, dto.Email);
 
             if (!success)
-                return BadRequest("Cannot demote admin");
+                return BadRequest(new { message = "Cannot demote admin" });
 
-            return Ok("Admin demoted to User");
+            return Ok(new { message = "Admin demoted to User successfully" });
         }
     }
 }

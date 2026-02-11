@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: e-commerce-api
+    env: dotnet
+    buildCommand: ./build.sh
+    startCommand: dotnet out/E-Commerce.dll
+    region: frankfurt
+    plan: starter
+    
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:10000
+      
+      # Database
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+        fromDatabase:
+          name: e-commerce-db
+          property: connectionString
+      
+      # JWT
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: FreeOneIssuer
+      - key: Jwt__Audience
+        value: FreeOneAudience
+      - key: Jwt__ExpiryMinutes
+        value: "30"
+      
+      # Email
+      - key: Email__SmtpHost
+        value: smtp.gmail.com
+      - key: Email__SmtpPort
+        value: "587"
+      - key: Email__SmtpUser
+        sync: false
+      - key: Email__SmtpPass
+        sync: false
+      - key: Email__FromEmail
+        sync: false
+      - key: Email__FromName
+        value: Free One Store
+      - key: Email__OwnerNotificationEmail
+        sync: false
+      
+      # Paymob
+      - key: Paymob__ApiKey
+        sync: false
+      - key: Paymob__IntegrationId
+        sync: false
+      - key: Paymob__IframeId
+        sync: false
+      - key: Paymob__HmacSecret
+        sync: false
+
+databases:
+  - name: e-commerce-db
+    engine: postgres
+    plan: starter
+    databaseName: ecommerce_db

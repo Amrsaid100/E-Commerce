@@ -12,5 +12,8 @@ namespace E_Commerce.Dtos.CartDto
         public int Quantity { get; set; }
         [Required]
         public decimal UnitPrice { get; set; }
+        
+        /// <summary>Available stock for this variant (returned by server only)</summary>
+        public int? AvailableStock { get; set; }
     }
 }

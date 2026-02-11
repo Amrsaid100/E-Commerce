@@ -18,6 +18,9 @@ namespace E_Commerce.DataContext
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<RevokedToken> RevokedTokens { get; set; }
         public DbSet<Governorate> Governorates { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<PaymentAttempt> PaymentAttempts { get; set; }
+        public DbSet<PaymentAuditLog> PaymentAuditLogs { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -45,6 +48,38 @@ namespace E_Commerce.DataContext
             modelBuilder.Entity<ProductVariant>()
                 .Property(x => x.Price)
                 .HasPrecision(18, 2);
+
+            // Payment configuration - prevent cascade delete conflict
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.User)
+                .WithMany()
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.Order)
+                .WithMany()
+                .HasForeignKey(p => p.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Payment indexes
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.IdempotencyKey)
+                .IsUnique();
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.ProviderOrderId);
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.ProviderTransactionId);
+
+            // PaymentAuditLog indexes
+            modelBuilder.Entity<PaymentAuditLog>()
+                .HasIndex(a => a.PaymentId);
+
+            modelBuilder.Entity<PaymentAuditLog>()
+                .HasIndex(a => a.Timestamp);
+
             modelBuilder.Entity<Governorate>().HasData(
        new Governorate { Id = 1, NameAr = "القاهرة", NameEn = "Cairo", ShippingCost = 50.00m },
        new Governorate { Id = 2, NameAr = "الجيزة", NameEn = "Giza", ShippingCost = 50.00m },

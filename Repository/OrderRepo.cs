@@ -30,6 +30,9 @@ namespace E_Commerce.Repository
         {
             return await context.Set<Order>()
                 .Include(o => o.Items)
+                    .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Images)
                 .Include(o => o.User)
                 .ToListAsync();
         }
@@ -47,6 +50,8 @@ namespace E_Commerce.Repository
             return await context.Set<Order>()
                 .Include(o => o.Items)
                     .ThenInclude(i => i.ProductVariant)
+                        .ThenInclude(v => v!.Product)
+                            .ThenInclude(p => p!.Images)
                 .Where(o => o.UserId == userId)
                 .ToListAsync();
         }
@@ -63,19 +68,22 @@ namespace E_Commerce.Repository
                     ProductVariantId = i.ProductVariantId,
                     ProductName = i.ProductName ?? string.Empty,
                     Quantity = i.Quantity,
-                    UnitPrice = i.UnitePrice
+                    UnitPrice = i.UnitePrice,
+                    ProductId = i.ProductVariant?.ProductId,
+                    ImageUrl = i.ProductVariant?.Product?.Images?.FirstOrDefault()?.ImageUrl
                 }).ToList() ?? new List<Dtos.OrderDto.OrderItemDto>(),
                 TotalPrice = order.TotalAmount,
                 Status = order.Status.ToString(),
                 Email = order.Email,
-                
+
                 Street = order.Street,
                 Neighborhood = order.Neighborhood,
                 PhoneNumber = order.PhoneNumber,
                 CreatedAt = order.CreatedAt,
                 ItemCount = order.Items != null ? order.Items.Sum(i => i.Quantity) : 0,
                 ShippingCost = order.ShippingCost,
-                GovernorateId = order.GovernorateId
+                GovernorateId = order.GovernorateId,
+                ItemsSubtotal = itemsSubtotal
             };
         }
     }

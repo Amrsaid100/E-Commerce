@@ -26,6 +26,9 @@ namespace E_Commerce.Dtos.CartDto
         
         [Required]
         public string Neighborhood { get; set; }
+
+        // Payment method: "CashOnDelivery" or "Paymob"
+        public string PaymentMethod { get; set; } = "CashOnDelivery";
         
         // Single item for Buy Now
         [Required]

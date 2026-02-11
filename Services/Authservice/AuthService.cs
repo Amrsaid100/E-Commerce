@@ -52,24 +52,20 @@ namespace E_Commerce.Services.Authservice
 
             otpStore[email] = (otp, DateTime.UtcNow.AddMinutes(5));
 
-            _logger.LogInformation($"OTP generated for {email}");
+            _logger.LogInformation("OTP generated for {Email}", email);
 
-            // Send email in background - DON'T WAIT
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _email.SendEmailAsync(email, "Your OTP Code",
-                        $"<p>Your OTP is: <b>{otp}</b></p><p>Expires in 5 minutes.</p>");
-                    _logger.LogInformation($"Email sent to {email}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"Failed to send email: {ex.Message}");
-                }
-            });
+            // Send email inline — let exceptions propagate so the user knows if it failed
+            await _email.SendEmailAsync(email, "Your OTP Code - Free One",
+                $"<div style='font-family:Segoe UI,sans-serif;max-width:480px;margin:auto;padding:20px;'>"
+              + $"<h2 style='color:#1a1a2e;text-align:center;'>👑 FREE ONE</h2>"
+              + $"<p style='text-align:center;font-size:16px;'>Your verification code is:</p>"
+              + $"<div style='text-align:center;margin:20px 0;'>"
+              + $"<span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a1a2e;background:#f4f4f4;padding:12px 24px;border-radius:8px;'>{otp}</span>"
+              + $"</div>"
+              + $"<p style='text-align:center;color:#888;font-size:13px;'>This code expires in 5 minutes. Do not share it with anyone.</p>"
+              + $"</div>");
 
-            // Return immediately - email sending happens in background
+            _logger.LogInformation("OTP email sent successfully to {Email}", email);
             return true;
         }
 

@@ -1,7 +1,6 @@
 ﻿using E_Commerce.Dtos.UserDto;
 using E_Commerce.Dtos.OrderDto;
 using E_Commerce.Entities;
-using E_Commerce.Services.PayMob;
 using E_Commerce.UnitOfWork;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +15,10 @@ namespace E_Commerce.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUnitOfWork _uow;
-        private readonly IPaymobService _paymob;
 
-        public UserController(IUnitOfWork uow, IPaymobService paymob)
+        public UserController(IUnitOfWork uow)
         {
             _uow = uow;
-            _paymob = paymob;
         }
 
         // ===== Helpers: read from JwtService claims (sub, email) =====
@@ -95,7 +92,7 @@ namespace E_Commerce.Controllers
             if (!string.IsNullOrWhiteSpace(dto.ProfileImage))
                 user.ProfileImage = dto.ProfileImage;
 
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Egypt Standard Time");
 
             await _uow.SaveChangesAsync();
             return Ok(new { message = "Profile updated successfully", profileImage = user.ProfileImage });
@@ -136,7 +133,7 @@ namespace E_Commerce.Controllers
                         return NotFound("User not found");
 
                     user.ProfileImage = dataUrl;
-                    user.UpdatedAt = DateTime.UtcNow;
+                    user.UpdatedAt = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Egypt Standard Time");
 
                     await _uow.SaveChangesAsync();
 
@@ -218,55 +215,8 @@ namespace E_Commerce.Controllers
         }
 
         // ========================= Checkout + Payment =========================
-        [HttpPost("checkout")]
-        public async Task<IActionResult> Checkout([FromBody] CheckOutDto dto)
-        {
-            if (dto == null)
-                return BadRequest("Invalid data.");
-
-            var userId = GetUserId();
-
-            // optional: enforce token email == dto email (if u want to ignore anyone to write another email)
-            // var tokenEmail = GetUserEmail();
-            // if (!string.IsNullOrWhiteSpace(tokenEmail) &&
-            //     !string.Equals(tokenEmail, dto.Email, StringComparison.OrdinalIgnoreCase))
-            //     return BadRequest("Email must match your account email.");
-
-            var cart = await _uow.Carts.GetByUserIdAsync(userId);
-
-            if (cart == null || cart.Items == null || !cart.Items.Any())
-                return BadRequest("Cart is empty");
-
-            var total = cart.Items.Sum(i => i.TotalPrice);
-
-            var order = new Order
-            {
-                UserId = userId,
-                Email = dto.Email,
-                
-                Street = dto.Street,
-                PhoneNumber = dto.PhoneNumber,
-                Status = OrderStatus.PendingPayment,
-                TotalAmount = total,
-                Items = cart.Items.Select(i => new OrderItem
-                {
-                    ProductVariantId = i.ProductVariantId,
-                    ProductName = i.ProductName,
-                    Quantity = i.Quantity,
-                    UnitePrice = i.UnitPrice
-                }).ToList()
-            };
-
-            await _uow.Orders.AddAsync(order);
-            await _uow.SaveChangesAsync();
-
-            var paymentUrl = await _paymob.CreatePaymentUrlAsync(order);
-
-            return Ok(new
-            {
-                OrderId = order.Id,
-                PaymentUrl = paymentUrl
-            });
-        }
+        // NOTE: Checkout is now handled by CheckOutController (/api/checkout).
+        // The old endpoint has been removed. Use POST /api/checkout instead,
+        // which creates the order AND initiates a Paymob payment session.
     }
 }

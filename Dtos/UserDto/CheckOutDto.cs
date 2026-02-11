@@ -21,5 +21,7 @@ namespace E_Commerce.Dtos.UserDto
         public string Neighborhood { get; set; }  // NEW
         public int? GovernorateId { get; set; }  // For shipping calculation
 
+        [Required]
+        public string PaymentMethod { get; set; } = "Paymob";  // "CashOnDelivery" or "Paymob"
     }
 }

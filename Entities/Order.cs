@@ -15,6 +15,12 @@ namespace E_Commerce.Entities
         Cancelled,
         Failed
     }
+
+    public enum PaymentMethod
+    {
+        CashOnDelivery,
+        Paymob
+    }
     public class Order
     {
         [Key]
@@ -36,7 +42,9 @@ namespace E_Commerce.Entities
         [Required]
         public decimal TotalAmount { get; set; }
 
-        public OrderStatus Status { get; set; }   
+        public OrderStatus Status { get; set; }
+
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Paymob;   
 
         public string? PaymentReference { get; set; }
 
@@ -44,7 +52,7 @@ namespace E_Commerce.Entities
 
         public User? User { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "Egypt Standard Time");
         // Add these properties to Order class
         public int? GovernorateId { get; set; }
         public decimal ShippingCost { get; set; }

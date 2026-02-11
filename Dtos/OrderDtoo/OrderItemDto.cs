@@ -11,5 +11,9 @@ namespace E_Commerce.Dtos.OrderDto
         public int Quantity { get; set; }
       
         public decimal UnitPrice { get; set; }
+
+        public string? ImageUrl { get; set; }
+
+        public int? ProductId { get; set; }
     }
 }

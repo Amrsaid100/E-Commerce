@@ -39,7 +39,7 @@ namespace E_Commerce.Services.CartService
                     variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId.Value);
                 }
 
-                // إذا لم يوجد variantId أو لم يوجد variant، ابحث عن أول variant للمنتج
+                // If no variantId or variant not found, fall back to first variant of the product
                 if (variant == null && item.ProductId.HasValue)
                 {
                     var allVariants = await work.ProductVariants.GetAllAsync();
@@ -52,6 +52,14 @@ namespace E_Commerce.Services.CartService
                 }
 
                 var exsitingitem = Cart.Items.FirstOrDefault(c => c.ProductVariantId == variant.Id);
+                
+                // Validate stock: total quantity in cart must not exceed available stock
+                int currentQtyInCart = exsitingitem?.Quantity ?? 0;
+                int requestedTotal = currentQtyInCart + item.Quantity;
+                if (requestedTotal > variant.Quantity)
+                {
+                    throw new InvalidOperationException($"Insufficient stock for '{item.ProductName}'. Only {variant.Quantity} available (you already have {currentQtyInCart} in cart).");
+                }
 
                 if (exsitingitem != null)
                 {
@@ -122,12 +130,16 @@ namespace E_Commerce.Services.CartService
                 decimal totalPrice = 0;
                 foreach (var item in Cart.Items)
                 {
+                    // Fetch variant to get available stock
+                    var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
+                    
                     var cdt = new CartItemDto()
                     {
                         ProductVariantId = item.ProductVariantId,
                         Quantity = item.Quantity,
                         ProductName = item.ProductName,
                         UnitPrice = item.UnitPrice,
+                        AvailableStock = variant?.Quantity ?? 0
                     };
                     totalPrice += item.UnitPrice*item.Quantity;
                     CartDtoList.Add(cdt);
@@ -195,7 +207,6 @@ namespace E_Commerce.Services.CartService
                 // Decrease stock
                 variant.Quantity -= item.Quantity;
                 await work.ProductVariants.UpdatdeAsync(variant);
-                Console.WriteLine($"📦 Stock decreased for {item.ProductName}: {variant.Quantity + item.Quantity} → {variant.Quantity}");
 
                 var OrderItem1 = new OrderItem()
                 {
@@ -231,7 +242,10 @@ namespace E_Commerce.Services.CartService
                 ShippingCost = shippingCost,
                 TotalAmount = totalPrice + shippingCost,
                 Status = OrderStatus.PendingPayment,
-                CreatedAt = DateTime.UtcNow
+                PaymentMethod = CheckOut.PaymentMethod == "CashOnDelivery" 
+                    ? PaymentMethod.CashOnDelivery 
+                    : PaymentMethod.Paymob
+                // CreatedAt will use default value from Order entity (Egypt timezone)
             };
 
             //UserOrderDto FinalOrder = new UserOrderDto()
@@ -242,8 +256,10 @@ namespace E_Commerce.Services.CartService
 
             await work.Orders.AddAsync(NewOrder);
             
-            // Clear cart after successful order
-            Cart.Items.Clear();
+            // NOTE: Cart is NOT cleared here. It will be cleared by the webhook handler
+            // only when payment is confirmed as SUCCEEDED. This prevents losing the cart
+            // if the user cancels payment or payment fails.
+            // Cart.Items.Clear();  // ← REMOVED: unsafe before payment confirmation
             await work.SaveChangesAsync();
 
             return NewOrder.Id;
@@ -254,8 +270,6 @@ namespace E_Commerce.Services.CartService
             if(GuestCart == null || GuestCart.Items == null || !GuestCart.Items.Any()||UserId==0)
                 return;
             
-            Console.WriteLine($"🔄 FromGuestCartToUserCart: UserId={UserId}, Items={GuestCart.Items.Count}");
-            
             var Cart = await work.Carts.GetByUserIdAsync(UserId);
             if (Cart == null)
             {
@@ -263,12 +277,9 @@ namespace E_Commerce.Services.CartService
                 List<CartItem> CartItems = new List<CartItem>();
                 // Fetch all variants once to allow fallback from ProductId -> VariantId
                 var allVariants = await work.ProductVariants.GetAllAsync();
-                Console.WriteLine($"📦 Total variants in database: {allVariants.Count()}");
                 
                 foreach (var item in GuestCart.Items)
                 {
-                    Console.WriteLine($"🔍 Processing guest item: ProductId={item.ProductId}, ProductVariantId={item.ProductVariantId}, Name={item.ProductName}");
-                    
                     int? resolvedVariantId = item.ProductVariantId ?? item.ProductId;
                     if (!resolvedVariantId.HasValue)
                     {
@@ -277,14 +288,12 @@ namespace E_Commerce.Services.CartService
                         if (found != null)
                         {
                             resolvedVariantId = found.Id;
-                            Console.WriteLine($"✅ Resolved variant ID from ProductId: {resolvedVariantId}");
                         }
                     }
 
                     if (!resolvedVariantId.HasValue)
                     {
                         // Skip items we cannot resolve to a variant
-                        Console.Error.WriteLine($"⚠️ Warning: skipping guest cart item '{item?.ProductName}' - no variant or product mapping available.");
                         continue;
                     }
                     
@@ -292,17 +301,14 @@ namespace E_Commerce.Services.CartService
                     var variant = allVariants.FirstOrDefault(v => v.Id == resolvedVariantId.Value);
                     if (variant == null)
                     {
-                        Console.Error.WriteLine($"⚠️ Warning: Variant ID {resolvedVariantId} not found in database for item '{item?.ProductName}'");
                         // Try to find any variant for this product
                         var anyVariant = allVariants.FirstOrDefault(v => v.ProductId == item.ProductId);
                         if (anyVariant != null)
                         {
                             resolvedVariantId = anyVariant.Id;
-                            Console.WriteLine($"✅ Found alternative variant ID: {resolvedVariantId}");
                         }
                         else
                         {
-                            Console.Error.WriteLine($"❌ Skipping item - no variants found for ProductId {item.ProductId}");
                             continue;
                         }
                     }
@@ -315,10 +321,8 @@ namespace E_Commerce.Services.CartService
                         Quantity = item.Quantity,
                     };
                     CartItems.Add(cartItem);
-                    Console.WriteLine($"✅ Added item to cart: {item.ProductName}");
                 }
                 
-                Console.WriteLine($"💾 Creating new cart with {CartItems.Count} items");
                 Cart = new Cart()
                 {
                     UserId = UserId,
@@ -326,18 +330,14 @@ namespace E_Commerce.Services.CartService
                 };
                 await work.Carts.AddAsync(Cart);
                 await work.SaveChangesAsync();
-                Console.WriteLine($"✅ Cart saved successfully");
             }
             else
             {
                 // Fetch variants once for fallback resolution
                 var allVariants = await work.ProductVariants.GetAllAsync();
-                Console.WriteLine($"📦 Merging into existing cart, Total variants: {allVariants.Count()}");
 
                 foreach (var item in GuestCart.Items)
                 {
-                    Console.WriteLine($"🔍 Processing guest item: ProductId={item.ProductId}, ProductVariantId={item.ProductVariantId}");
-                    
                     int? resolvedVariantId = item.ProductVariantId ?? item.ProductId;
                     if (!resolvedVariantId.HasValue)
                     {
@@ -345,13 +345,11 @@ namespace E_Commerce.Services.CartService
                         if (found != null)
                         {
                             resolvedVariantId = found.Id;
-                            Console.WriteLine($"✅ Resolved variant ID: {resolvedVariantId}");
                         }
                     }
 
                     if (!resolvedVariantId.HasValue)
                     {
-                        Console.Error.WriteLine($"⚠️ Warning: skipping guest cart item '{item?.ProductName}' - no variant or product mapping available.");
                         continue;
                     }
                     
@@ -359,16 +357,13 @@ namespace E_Commerce.Services.CartService
                     var variant = allVariants.FirstOrDefault(v => v.Id == resolvedVariantId.Value);
                     if (variant == null)
                     {
-                        Console.Error.WriteLine($"⚠️ Variant ID {resolvedVariantId} not found, looking for alternative");
                         var anyVariant = allVariants.FirstOrDefault(v => v.ProductId == item.ProductId);
                         if (anyVariant != null)
                         {
                             resolvedVariantId = anyVariant.Id;
-                            Console.WriteLine($"✅ Found alternative variant: {resolvedVariantId}");
                         }
                         else
                         {
-                            Console.Error.WriteLine($"❌ Skipping item - no variants for ProductId {item.ProductId}");
                             continue;
                         }
                     }
@@ -377,7 +372,6 @@ namespace E_Commerce.Services.CartService
                     if (existing != null)
                     {
                         existing.Quantity += item.Quantity;
-                        Console.WriteLine($"✅ Updated existing item quantity: {existing.ProductName}");
                     }
                     else
                     {
@@ -390,11 +384,9 @@ namespace E_Commerce.Services.CartService
                             Quantity = item.Quantity,
                         };
                         Cart.Items.Add(cartItem);
-                        Console.WriteLine($"✅ Added new item: {item.ProductName}");
                     }
                 }
                 await work.SaveChangesAsync();
-                Console.WriteLine($"✅ Cart merge completed successfully");
             }
         }
 
@@ -428,7 +420,6 @@ namespace E_Commerce.Services.CartService
             // IMPORTANT: Decrease stock when buying now
             variant.Quantity -= buyNowDto.Item.Quantity;
             await work.ProductVariants.UpdatdeAsync(variant);
-            Console.WriteLine($"📦 Stock decreased for {buyNowDto.Item.ProductName}: {variant.Quantity + buyNowDto.Item.Quantity} → {variant.Quantity}");
 
             var orderItem = new OrderItem()
             {
@@ -462,8 +453,8 @@ namespace E_Commerce.Services.CartService
                 Status = OrderStatus.PendingPayment,
                 ShippingCost = shippingCost,
                 TotalAmount = itemTotal + shippingCost,
-                Items = new List<OrderItem> { orderItem },
-                CreatedAt = DateTime.UtcNow
+                Items = new List<OrderItem> { orderItem }
+                // CreatedAt will use default value from Order entity (Egypt timezone)
             };
 
             await work.Orders.AddAsync(order);

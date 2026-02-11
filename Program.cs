@@ -1,4 +1,5 @@
 using E_Commerce.DataContext;
+using E_Commerce.Helpers;
 using E_Commerce.Middleware;
 using E_Commerce.Repositories.CategoryRepository;
 using E_Commerce.Repository;
@@ -8,7 +9,6 @@ using E_Commerce.Services.CategoryService;
 using E_Commerce.Services.EmailService;
 using E_Commerce.Services.JwtServices;
 using E_Commerce.Services.PayMob;
-using E_Commerce.Services.PaymentService;
 using E_Commerce.Services.ProductService;
 using E_Commerce.UnitOfWork;
 using FluentValidation;
@@ -69,11 +69,15 @@ namespace E_Commerce
             builder.Services.AddSingleton<IJwtService, E_Commerce.Services.JwtServices.JwtService>();
             builder.Services.AddScoped<IEmailService, EmailService>();
             builder.Services.AddScoped<IAuthService, E_Commerce.Services.Authservice.AuthService>();
-            builder.Services.AddHttpClient<IPaymobService, PaymobService>();
             builder.Services.AddScoped<IProductService, ProdService>();
             builder.Services.AddScoped<ICartService, CartServices>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
-            builder.Services.AddHttpClient<IPaymentService, PaymentSer>();
+
+            // Paymob payment services
+            builder.Services.Configure<PaymobSettings>(builder.Configuration.GetSection("Paymob"));
+            builder.Services.AddHttpClient<IPaymobClient, PaymobClient>();
+            builder.Services.AddScoped<IPaymobPaymentService, PaymobPaymentService>();
+            builder.Services.AddHostedService<PaymentTimeoutService>();
 
             // Clear default inbound claim type map to prevent automatic claim renaming
             System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -141,14 +145,20 @@ namespace E_Commerce
                     };
                 });
 
-
             builder.Services.AddAuthorization();
 
             // CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins("http://localhost:56173", "http://localhost:4200")
+                    policy.WithOrigins(
+                        "http://localhost:56173", 
+                        "http://localhost:4200",
+                        "https://still-butterfly-d6ee.s240648.workers.dev",
+                        "https://still-butterfly-d6ee.pages.dev",
+                        "https://angry-teeth-open.loca.lt",
+                        "https://shaggy-vampirebat-78.loca.lt"
+                    )
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
@@ -177,6 +187,12 @@ namespace E_Commerce
             });
 
             var app = builder.Build();
+
+            // Validate Paymob configuration — fails fast in Production if env vars are missing
+            PaymobConfigValidator.Validate(
+                app.Services,
+                app.Environment,
+                app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PaymobConfigValidator"));
 
             // Ensure DB schema is up-to-date before seeding
             using (var scope = app.Services.CreateScope())

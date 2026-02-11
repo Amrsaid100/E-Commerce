@@ -19,6 +19,6 @@ namespace E_Commerce.Dtos.UserDto
         public int? GovernorateId { get; set; }
         public string? GovernorateName { get; set; }
         public decimal ShippingCost { get; set; }
-
+        public decimal ItemsSubtotal { get; set; }
     }
 }
