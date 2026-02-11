@@ -1,9 +1,7 @@
 services:
   - type: web
     name: e-commerce-api
-    env: dotnet
-    buildCommand: ./build.sh
-    startCommand: dotnet out/E-Commerce.dll
+    env: docker
     region: frankfurt
     plan: starter
     
