@@ -1,4 +1,4 @@
-﻿using E_Commerce.Entities;
+using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
 using E_Commerce.Services.CartService;
 using E_Commerce.Services.EmailService;
@@ -24,14 +24,16 @@ namespace E_Commerce.Controllers
         private readonly IPaymobPaymentService _paymentService;
         private readonly IEmailService _emailService;
         private readonly EcommerceDbContext _db;
+        private readonly ILogger<OrderController> _logger;
 
-        public OrderController(IUnitOfWork unitofwork, ICartService cartService, IPaymobPaymentService paymentService, IEmailService emailService, EcommerceDbContext db)
+        public OrderController(IUnitOfWork unitofwork, ICartService cartService, IPaymobPaymentService paymentService, IEmailService emailService, EcommerceDbContext db, ILogger<OrderController> logger)
         {
             _unitofwork = unitofwork;
             _cartService = cartService;
             _paymentService = paymentService;
             _emailService = emailService;
             _db = db;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -194,47 +196,63 @@ namespace E_Commerce.Controllers
         {
             try
             {
-                // Log the received data for debugging
-                Console.WriteLine($"🔍 BuyNow called with data: {System.Text.Json.JsonSerializer.Serialize(buyNowDto)}");
+                _logger.LogInformation("🔍 BuyNow called with data: {BuyNowData}", System.Text.Json.JsonSerializer.Serialize(buyNowDto));
 
                 if (buyNowDto == null)
                 {
-                    Console.WriteLine("❌ BuyNowDto is null");
+                    _logger.LogWarning("❌ BuyNowDto is null");
                     return BadRequest("Invalid buy-now data");
                 }
 
                 if (buyNowDto.Item == null)
                 {
-                    Console.WriteLine("❌ BuyNowDto.Item is null");
+                    _logger.LogWarning("❌ BuyNowDto.Item is null");
                     return BadRequest("Invalid item data");
                 }
 
                 var userId = GetUserId();
-                Console.WriteLine($"🔍 UserId: {userId}");
+                _logger.LogInformation("🔍 Processing Buy Now for UserId: {UserId}", userId);
 
                 var orderId = await _cartService.BuyNowAsync(userId, buyNowDto);
                 if (orderId == 0)
                 {
-                    Console.WriteLine("❌ BuyNowAsync returned 0");
+                    _logger.LogWarning("❌ BuyNowAsync returned 0 for UserId: {UserId}", userId);
                     return BadRequest("Buy Now order creation failed");
                 }
 
-                Console.WriteLine($"✅ Order created successfully with ID: {orderId}");
+                _logger.LogInformation("✅ Buy Now order created successfully: #{OrderId}", orderId);
                 
                 // Send owner notification email (inline, won't break order flow on failure)
                 try
                 {
+                    _logger.LogInformation("🔍 Starting email notification process for Buy Now Order #{OrderId}", orderId);
+                    
+                    // Small delay to ensure transaction is committed
+                    await Task.Delay(100);
+                    
+                    // Force a fresh query with explicit loading to ensure Items are populated
                     var order = await _db.Orders
                         .Include(o => o.Items)
                         .Include(o => o.User)
                         .Include(o => o.Governorate)
+                        .AsNoTracking()
                         .FirstOrDefaultAsync(o => o.Id == orderId);
+                    
                     if (order != null)
+                    {
+                        _logger.LogInformation("📧 Sending owner email for Buy Now Order #{OrderId} with {ItemCount} items", 
+                            orderId, order.Items?.Count ?? 0);
                         await _emailService.SendOwnerNewOrderEmailAsync(order);
+                        _logger.LogInformation("✅ Email sent successfully for Buy Now Order #{OrderId}", orderId);
+                    }
+                    else
+                    {
+                        _logger.LogError("❌ Could not load Buy Now order #{OrderId} for email notification", orderId);
+                    }
                 }
                 catch (Exception emailEx)
                 {
-                    Console.WriteLine($"⚠️ Email notification failed (order still created): {emailEx.Message}");
+                    _logger.LogWarning(emailEx, "Email notification failed for Buy Now Order #{OrderId} (order still created)", orderId);
                 }
 
                 // Check payment method
@@ -263,13 +281,12 @@ namespace E_Commerce.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                Console.WriteLine($"❌ InvalidOperationException: {ex.Message}");
+                _logger.LogWarning(ex, "❌ InvalidOperationException in BuyNow: {Message}", ex.Message);
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Exception in BuyNow: {ex.Message}");
-                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "❌ Exception in BuyNow: {Message}", ex.Message);
                 return StatusCode(500, new { message = "Error processing Buy Now order", error = ex.Message });
             }
         }

@@ -69,6 +69,8 @@ namespace E_Commerce.Services.ProductService
                 Description = productDto.Description,
                 CategoryId = category.Id,
                 Price = productDto.Price,
+                IsOnSale = productDto.IsOnSale,
+                SalePrice = productDto.SalePrice,
                 ShippingCost = productDto.ShippingCost
             };
 
@@ -180,6 +182,8 @@ namespace E_Commerce.Services.ProductService
             product.Name = newProduct.Name;
             product.Description = newProduct.Description;
             product.Price = newProduct.Price;
+            product.IsOnSale = newProduct.IsOnSale;
+            product.SalePrice = newProduct.SalePrice;
 
             // Update category if CategoryName provided
             if (!string.IsNullOrWhiteSpace(newProduct.CategoryName))
@@ -299,6 +303,8 @@ namespace E_Commerce.Services.ProductService
                 Description = product.Description,
                 CategoryName = product.Category?.Name ?? "",
                 Price = product.Price,
+                IsOnSale = product.IsOnSale,
+                SalePrice = product.SalePrice,
                 Variants = variantDtos,
                 Images = imageDtos
             };

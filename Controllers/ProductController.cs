@@ -1,4 +1,4 @@
-﻿using E_Commerce.Dtos.Helpers;
+using E_Commerce.Dtos.Helpers;
 using E_Commerce.Dtos.ProductDtos;
 using E_Commerce.Services.ProductService;
 using Microsoft.AspNetCore.Authorization;
@@ -103,12 +103,30 @@ namespace E_Commerce.Controllers
                     return BadRequest(new { message = "Name, Description, CategoryName, and Price are required" });
                 }
 
+                // Parse IsOnSale from form (form data sends strings; ensure robust binding)
+                var isOnSale = productForm.IsOnSale;
+                if (Request.Form.ContainsKey("isOnSale"))
+                {
+                    var isOnSaleStr = Request.Form["isOnSale"].ToString();
+                    isOnSale = string.Equals(isOnSaleStr, "true", StringComparison.OrdinalIgnoreCase) || isOnSaleStr == "1";
+                }
+                // Parse SalePrice from form when on sale
+                decimal? salePrice = productForm.SalePrice;
+                if (isOnSale && Request.Form.ContainsKey("salePrice"))
+                {
+                    var salePriceStr = Request.Form["salePrice"].ToString();
+                    if (!string.IsNullOrWhiteSpace(salePriceStr) && decimal.TryParse(salePriceStr, out var parsed))
+                        salePrice = parsed;
+                }
+
                 var product = new NewProductDto
                 {
                     Name = productForm.Name,
                     Description = productForm.Description,
                     CategoryName = productForm.CategoryName,
                     Price = productForm.Price,
+                    IsOnSale = isOnSale,
+                    SalePrice = salePrice,
                     ShippingCost = productForm.ShippingCost,
                     Variants = new List<NewProductVariantDto>(),
                     Images = new List<NewProductImageDto>()

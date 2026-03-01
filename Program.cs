@@ -9,12 +9,13 @@ using E_Commerce.Services.CategoryService;
 using E_Commerce.Services.EmailService;
 using E_Commerce.Services.JwtServices;
 using E_Commerce.Services.PayMob;
+using E_Commerce.Services.FileStorage;
 using E_Commerce.Services.ProductService;
+using E_Commerce.Services.ShopSettingsService;
 using E_Commerce.UnitOfWork;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics.Metrics;
@@ -72,6 +73,10 @@ namespace E_Commerce
             builder.Services.AddScoped<IProductService, ProdService>();
             builder.Services.AddScoped<ICartService, CartServices>();
             builder.Services.AddScoped<ICategoryService, CategoryService>();
+
+            // Shop settings & file storage
+            builder.Services.AddScoped<IShopSettingsService, ShopSettingsService>();
+            builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
             // Paymob payment services
             builder.Services.Configure<PaymobSettings>(builder.Configuration.GetSection("Paymob"));
@@ -151,17 +156,9 @@ namespace E_Commerce
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngular", policy => {
-                    policy.WithOrigins(
-                        "http://localhost:56173", 
-                        "http://localhost:4200",
-                        "https://still-butterfly-d6ee.s240648.workers.dev",
-                        "https://still-butterfly-d6ee.pages.dev",
-                        "https://angry-teeth-open.loca.lt",
-                        "https://shaggy-vampirebat-78.loca.lt"
-                    )
+                    policy.AllowAnyOrigin()  // Allow all origins for development
                           .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                          .AllowAnyMethod();
                 });
             });
 
@@ -204,13 +201,13 @@ namespace E_Commerce
                     try
                     {
                         // Dev only: make sure DB exists + migrations applied (Migrate is idempotent)
-                        Console.WriteLine("🔄 Ensuring database is migrated...");
+                        Console.WriteLine(" Ensuring database is migrated...");
                         db.Database.Migrate();
-                        Console.WriteLine("✅ Database ready");
+                        Console.WriteLine(" Database ready");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Migration failed: {ex.Message}");
+                        Console.WriteLine($" Migration failed: {ex.Message}");
                         // لا ترمي Exception في Production
                     }
                 }
@@ -232,11 +229,13 @@ namespace E_Commerce
                 app.UseSwaggerUI();
             }
 
+            // Static files (wwwroot - add product form, etc.)
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+
             // Middleware Pipeline
             app.UseMiddleware<RequestResponseLoggingMiddleware>();
             app.UseMiddleware<GlobalExceptionMiddleware>();
-
-            app.UseHttpsRedirection();
 
             // CORS must be before Auth
             app.UseCors("AllowAngular");

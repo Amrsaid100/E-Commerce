@@ -21,6 +21,7 @@ namespace E_Commerce.DataContext
         public DbSet<Payment> Payments { get; set; }
         public DbSet<PaymentAttempt> PaymentAttempts { get; set; }
         public DbSet<PaymentAuditLog> PaymentAuditLogs { get; set; }
+        public DbSet<ShopSettings> ShopSettings { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -109,6 +110,11 @@ namespace E_Commerce.DataContext
        new Governorate { Id = 26, NameAr = "شمال سيناء", NameEn = "North Sinai", ShippingCost = 110.00m },
        new Governorate { Id = 27, NameAr = "السويس", NameEn = "Suez", ShippingCost = 70.00m }
    );
+
+            // ShopSettings — single-row, seed default
+            modelBuilder.Entity<ShopSettings>().HasData(
+                new ShopSettings { Id = 1 }
+            );
         }
 
         public EcommerceDbContext(DbContextOptions<EcommerceDbContext> options)

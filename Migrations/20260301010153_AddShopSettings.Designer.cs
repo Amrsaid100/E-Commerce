@@ -4,6 +4,7 @@ using E_Commerce.DataContext;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace E_Commerce.Migrations
 {
     [DbContext(typeof(EcommerceDbContext))]
-    partial class EcommerceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260301010153_AddShopSettings")]
+    partial class AddShopSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -757,14 +760,6 @@ namespace E_Commerce.Migrations
                     b.Property<int>("BorderRadius")
                         .HasColumnType("int");
 
-                    b.Property<string>("ContactEmail")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("FacebookUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("FaviconUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -774,27 +769,14 @@ namespace E_Commerce.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("FooterTagline")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.Property<string>("HeaderVariant")
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<string>("InstagramUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("PhoneDisplay")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("PrimaryColor")
                         .IsRequired()
@@ -816,16 +798,8 @@ namespace E_Commerce.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("nvarchar(7)");
 
-                    b.Property<string>("TikTokUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("WhatsApp")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -839,15 +813,12 @@ namespace E_Commerce.Migrations
                             BackgroundColor = "#FAFAFA",
                             BorderRadius = 8,
                             FontFamily = "Inter",
-                            FooterTagline = "Your premium shopping destination",
                             HeaderVariant = "v1",
-                            PhoneDisplay = "+20 101 1944466",
                             PrimaryColor = "#0B0B0B",
                             SecondaryColor = "#FAFAFA",
                             ShopName = "FREE ONE",
                             TextColor = "#0B0B0B",
-                            UpdatedAt = new DateTime(2026, 3, 1, 16, 2, 10, 17, DateTimeKind.Utc).AddTicks(9151),
-                            WhatsApp = "201011944466"
+                            UpdatedAt = new DateTime(2026, 3, 1, 1, 1, 52, 658, DateTimeKind.Utc).AddTicks(6356)
                         });
                 });
 

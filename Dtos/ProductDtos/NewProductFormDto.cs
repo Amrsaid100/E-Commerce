@@ -9,6 +9,8 @@ namespace E_Commerce.Dtos.ProductDtos
         public string Description { get; set; }
         public string CategoryName { get; set; }
         public decimal Price { get; set; }
+        public bool IsOnSale { get; set; }
+        public decimal? SalePrice { get; set; }
         public decimal ShippingCost { get; set; } = 0m;
         
         // Optional: Price and Quantity for single variant

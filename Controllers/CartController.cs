@@ -1,6 +1,10 @@
 ﻿using E_Commerce.Dtos.CartDto;
 using E_Commerce.Dtos.UserDto;
 using E_Commerce.Services.CartService;
+using E_Commerce.Services.EmailService;
+using E_Commerce.DataContext;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.IdentityModel.Tokens.Jwt;
@@ -14,10 +18,16 @@ namespace E_Commerce.Controllers
     public class CartController : ControllerBase
     {
         private readonly ICartService _cartService;
+        private readonly IEmailService _emailService;
+        private readonly EcommerceDbContext _db;
+        private readonly ILogger<CartController> _logger;
 
-        public CartController(ICartService cartService)
+        public CartController(ICartService cartService, IEmailService emailService, EcommerceDbContext db, ILogger<CartController> logger)
         {
             _cartService = cartService;
+            _emailService = emailService;
+            _db = db;
+            _logger = logger;
         }
 
         // ===== Helper: try to get userId from JWT (sub) =====
@@ -164,6 +174,34 @@ namespace E_Commerce.Controllers
                 if (orderId == 0)
                     return BadRequest("Cart is empty.");
 
+                // Send owner notification (best-effort, don't break checkout on failure)
+                try
+                {
+                    _logger?.LogInformation("🔍 Preparing owner email for Cart Checkout Order #{OrderId}", orderId);
+                    await Task.Delay(100);
+                    var order = await _db.Orders
+                        .Include(o => o.Items)
+                        .Include(o => o.User)
+                        .Include(o => o.Governorate)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(o => o.Id == orderId);
+
+                    if (order != null)
+                    {
+                        _logger?.LogInformation("📧 Sending owner email for Cart Checkout Order #{OrderId}", orderId);
+                        await _emailService.SendOwnerNewOrderEmailAsync(order);
+                        _logger?.LogInformation("✅ Owner email sent for Cart Checkout Order #{OrderId}", orderId);
+                    }
+                    else
+                    {
+                        _logger?.LogWarning("❌ Could not load order #{OrderId} for owner email after cart checkout", orderId);
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    _logger?.LogWarning(emailEx, "Email notification failed for cart checkout order #{OrderId} (order still created)", orderId);
+                }
+
                 return Ok(new { OrderId = orderId });
             }
             catch (InvalidOperationException ex)
@@ -172,7 +210,7 @@ namespace E_Commerce.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Checkout error: {ex.Message}");
+                _logger?.LogError(ex, "❌ Checkout error: {Message}", ex.Message);
                 return StatusCode(500, new { message = "An error occurred during checkout", error = ex.Message });
             }
         }

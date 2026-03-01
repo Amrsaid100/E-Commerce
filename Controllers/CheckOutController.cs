@@ -1,4 +1,4 @@
-﻿using E_Commerce.Dtos.UserDto;
+using E_Commerce.Dtos.UserDto;
 using E_Commerce.Services.PayMob;
 using E_Commerce.Services.CartService;
 using E_Commerce.Services.EmailService;
@@ -55,7 +55,17 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> Checkout([FromBody] CheckOutDto dto)
         {
             if (dto == null)
-                return BadRequest("Invalid checkout data");
+                return BadRequest(new { message = "Invalid checkout data" });
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .Where(m => !string.IsNullOrEmpty(m))
+                    .ToList();
+                return BadRequest(new { message = "Please fix the errors below.", errors });
+            }
 
             try
             {

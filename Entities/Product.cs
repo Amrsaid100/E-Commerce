@@ -22,6 +22,10 @@ namespace E_Commerce.Entities
 
         public decimal Price { get; set; }
 
+        // Sale fields
+        public bool IsOnSale { get; set; } = false;
+        public decimal? SalePrice { get; set; }
+
         // Shipping cost set by Owner/Admin
         public decimal ShippingCost { get; set; } = 0m;
 

@@ -198,12 +198,20 @@ namespace E_Commerce.Services.CartService
                 }
             }
             
-            // IMPORTANT: Decrease stock for each ordered item
+            // IMPORTANT: Decrease stock for each ordered item and use sale price when available
             foreach(var item in Cart.Items)
             {
                 // Get the product variant and decrease stock
                 var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
-                
+
+                // Determine unit price: prefer product SalePrice when product.IsOnSale
+                decimal unitPriceToUse = variant?.Price ?? item.UnitPrice;
+                var product = await work.Products.GetByIdAsync(variant.ProductId);
+                if (product != null && product.IsOnSale && product.SalePrice > 0)
+                {
+                    unitPriceToUse = product.SalePrice.Value;
+                }
+
                 // Decrease stock
                 variant.Quantity -= item.Quantity;
                 await work.ProductVariants.UpdatdeAsync(variant);
@@ -213,9 +221,9 @@ namespace E_Commerce.Services.CartService
                     ProductVariantId = item.ProductVariantId,
                     ProductName = item.ProductName,
                     Quantity = item.Quantity,
-                    UnitePrice = item.UnitPrice
+                    UnitePrice = unitPriceToUse
                 };
-                totalPrice += item.UnitPrice * item.Quantity;
+                totalPrice += unitPriceToUse * item.Quantity;
 
                 OrderItems.Add(OrderItem1);
             }
@@ -421,12 +429,20 @@ namespace E_Commerce.Services.CartService
             variant.Quantity -= buyNowDto.Item.Quantity;
             await work.ProductVariants.UpdatdeAsync(variant);
 
+            // Determine unit price for buy-now: prefer product sale price when available
+            var productForBuyNow = await work.Products.GetByIdAsync(variant.ProductId);
+            decimal buyNowUnitPrice = variant.Price;
+            if (productForBuyNow != null && productForBuyNow.IsOnSale && productForBuyNow.SalePrice > 0)
+            {
+                buyNowUnitPrice = productForBuyNow.SalePrice.Value;
+            }
+
             var orderItem = new OrderItem()
             {
                 ProductVariantId = variantId,
                 ProductName = buyNowDto.Item.ProductName,
                 Quantity = buyNowDto.Item.Quantity,
-                UnitePrice = buyNowDto.Item.Price
+                UnitePrice = buyNowUnitPrice
             };
 
             // Calculate shipping cost based on governorate

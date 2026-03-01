@@ -7,6 +7,8 @@
         public string Description { get; set; }
         public string CategoryName { get; set; }
         public decimal Price { get; set; }
+        public bool IsOnSale { get; set; }
+        public decimal? SalePrice { get; set; }
         public decimal ShippingCost { get; set; }
         public List<NewProductVariantDto>? Variants { get; set; }
         public List<NewProductImageDto>? Images { get; set; } // Make nullable - optional for updates
