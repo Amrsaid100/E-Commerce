@@ -67,12 +67,20 @@ namespace E_Commerce.Services.CartService
                 }
                 else
                 {
+                    // Always store the correct (sale) price server-side — ignore whatever the frontend sent
+                    decimal unitPriceToStore = item.UnitPrice;
+                    var productForPrice = await work.Products.GetByIdAsync(variant.ProductId);
+                    if (productForPrice != null && productForPrice.IsOnSale && productForPrice.SalePrice.HasValue && productForPrice.SalePrice > 0)
+                    {
+                        unitPriceToStore = productForPrice.SalePrice.Value;
+                    }
+
                     var Cart_item = new CartItem
                     {
                         CartId = Cart.Id,
                         ProductVariantId = variant.Id,
                         ProductName = item.ProductName,
-                        UnitPrice = item.UnitPrice,
+                        UnitPrice = unitPriceToStore,
                         Quantity = item.Quantity,
                     };
                     Cart.Items.Add(Cart_item);
@@ -130,18 +138,30 @@ namespace E_Commerce.Services.CartService
                 decimal totalPrice = 0;
                 foreach (var item in Cart.Items)
                 {
-                    // Fetch variant to get available stock
+                    // Fetch variant to get available stock and product id
                     var variant = await work.ProductVariants.GetByIdAsync(item.ProductVariantId);
-                    
+
+                    // Fetch product to get up-to-date sale info
+                    var product = variant != null ? await work.Products.GetByIdAsync(variant.ProductId) : null;
+                    bool isOnSale = product?.IsOnSale ?? false;
+                    decimal? salePrice = (isOnSale && product?.SalePrice > 0) ? product!.SalePrice : null;
+                    decimal? originalPrice = isOnSale ? product?.Price : null;
+
+                    // Always use the current effective price (catches products that went on sale after being added)
+                    decimal effectivePrice = (isOnSale && salePrice.HasValue) ? salePrice.Value : item.UnitPrice;
+
                     var cdt = new CartItemDto()
                     {
                         ProductVariantId = item.ProductVariantId,
                         Quantity = item.Quantity,
                         ProductName = item.ProductName,
-                        UnitPrice = item.UnitPrice,
-                        AvailableStock = variant?.Quantity ?? 0
+                        UnitPrice = effectivePrice,
+                        AvailableStock = variant?.Quantity ?? 0,
+                        IsOnSale = isOnSale,
+                        SalePrice = salePrice,
+                        OriginalPrice = originalPrice
                     };
-                    totalPrice += item.UnitPrice*item.Quantity;
+                    totalPrice += effectivePrice * item.Quantity;
                     CartDtoList.Add(cdt);
                 }
 

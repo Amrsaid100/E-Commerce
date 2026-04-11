@@ -18,6 +18,7 @@ namespace E_Commerce.Repository
         {
             return await context.Products
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Include(p => p.Variants)
@@ -33,6 +34,7 @@ namespace E_Commerce.Repository
 
             // Guard against null Description values to avoid NullReferenceException
             var product = await context.Products
+                .AsSplitQuery()
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Include(p => p.Variants)
@@ -64,7 +66,7 @@ namespace E_Commerce.Repository
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(p => p.Category)
-                .Include(p => p.Images)
+                .Include(p => p.Images.Where(i => i.ImageUrl == null || !i.ImageUrl.StartsWith("data:")))
                 .Include(p => p.Variants)
                 .ToListAsync();
         }
@@ -75,7 +77,7 @@ namespace E_Commerce.Repository
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(p => p.Category)
-                .Include(p => p.Images)
+                .Include(p => p.Images.Where(i => i.ImageUrl == null || !i.ImageUrl.StartsWith("data:")))
                 .Include(p => p.Variants)
                 .OrderBy(p => p.Id)
                 .ToListAsync();
@@ -90,7 +92,7 @@ namespace E_Commerce.Repository
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(p => p.Category)
-                .Include(p => p.Images)
+                .Include(p => p.Images.Where(i => i.ImageUrl == null || !i.ImageUrl.StartsWith("data:")))
                 .Include(p => p.Variants)
                 .AsQueryable();
 

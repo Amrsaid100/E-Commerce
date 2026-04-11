@@ -1,17 +1,24 @@
-﻿using E_Commerce.Dtos.Helpers;
+﻿using E_Commerce.DataContext;
+using E_Commerce.Dtos.Helpers;
 using E_Commerce.Dtos.ProductDtos;
 using E_Commerce.Entities;
 using E_Commerce.UnitOfWork;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 
 namespace E_Commerce.Services.ProductService
 {
     public class ProdService : IProductService
     {
         private readonly IUnitOfWork work;
+        private readonly IWebHostEnvironment _env;
+        private readonly EcommerceDbContext _context;
 
-        public ProdService(IUnitOfWork unitOfWork)
+        public ProdService(IUnitOfWork unitOfWork, IWebHostEnvironment env, EcommerceDbContext context)
         {
             work = unitOfWork;
+            _env = env;
+            _context = context;
         }
 
         public async Task<ProductDto> AddProductAsync(NewProductDto productDto)
@@ -249,10 +256,17 @@ namespace E_Commerce.Services.ProductService
 
                 foreach (var img in newProduct.Images)
                 {
+                    // If it's a base64 DataURL, save to disk and store URL path instead
+                    var imageUrl = img.ImageData;
+                    if (!string.IsNullOrEmpty(imageUrl) && imageUrl.StartsWith("data:"))
+                    {
+                        imageUrl = await SaveBase64ImageAsync(imageUrl);
+                    }
+
                     var newImage = new ProductImage
                     {
                         ProductId = product.Id,
-                        ImageUrl = img.ImageData // Store Base64 data
+                        ImageUrl = imageUrl
                     };
                     product.Images.Add(newImage);
                 }
@@ -308,6 +322,71 @@ namespace E_Commerce.Services.ProductService
                 Variants = variantDtos,
                 Images = imageDtos
             };
+        }
+
+        /// <summary>
+        /// Decodes a base64 DataURL (data:image/jpeg;base64,...) and saves it to
+        /// wwwroot/uploads/products/, returning the public URL path.
+        /// </summary>
+        public async Task<(int converted, int failed)> MigrateBase64ImagesToFilesAsync()
+        {
+            // Load only IDs to avoid pulling 32MB of base64 into memory at once
+            var ids = await _context.ProductImages
+                .Where(i => i.ImageUrl != null && i.ImageUrl.StartsWith("data:"))
+                .Select(i => i.Id)
+                .ToListAsync();
+
+            int converted = 0, failed = 0;
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var img = await _context.ProductImages.FindAsync(id);
+                    if (img == null) continue;
+
+                    var filePath = await SaveBase64ImageAsync(img.ImageUrl!);
+                    img.ImageUrl = filePath;
+                    await _context.SaveChangesAsync();
+
+                    // Detach to free the large base64 string from memory
+                    _context.Entry(img).State = Microsoft.EntityFrameworkCore.EntityState.Detached;
+                    converted++;
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            return (converted, failed);
+        }
+
+        private async Task<string> SaveBase64ImageAsync(string dataUrl)
+        {
+            // dataUrl format: "data:<mime>;base64,<data>"
+            var commaIdx = dataUrl.IndexOf(',');
+            if (commaIdx < 0) return dataUrl; // not valid DataURL, return as-is
+
+            var meta = dataUrl[..commaIdx];          // e.g. "data:image/jpeg;base64"
+            var base64Data = dataUrl[(commaIdx + 1)..];
+            var bytes = Convert.FromBase64String(base64Data);
+
+            // Determine extension from MIME
+            var ext = ".jpg";
+            if (meta.Contains("png"))  ext = ".png";
+            else if (meta.Contains("webp")) ext = ".webp";
+            else if (meta.Contains("svg"))  ext = ".svg";
+
+            var fileName = $"product_{Guid.NewGuid():N}{ext}";
+            var uploadsDir = Path.Combine(
+                _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                "uploads", "products");
+            Directory.CreateDirectory(uploadsDir);
+
+            var filePath = Path.Combine(uploadsDir, fileName);
+            await File.WriteAllBytesAsync(filePath, bytes);
+
+            return $"/uploads/products/{fileName}";
         }
     }
 }

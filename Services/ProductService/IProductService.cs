@@ -13,5 +13,6 @@ namespace E_Commerce.Services.ProductService
         Task<List<ProductDto>> GetAllProductByCategoryNameAsync(string categoryName);
         Task<List<ProductDto>> GetAllProductsAsync();
         Task<PagedResult<ProductDto>> GetPagedProductsAsync(PaginationParams paginationParams, string? categoryName = null, string? search = null);
+        Task<(int converted, int failed)> MigrateBase64ImagesToFilesAsync();
     }
 }

@@ -49,7 +49,8 @@ namespace E_Commerce.Entities
         public string HeaderVariant { get; set; } = "v1"; // "v1" or "v2"
 
         // ── Footer ──
-        [MaxLength(300)]
+        [MaxLength(200)] 
+
         public string FooterTagline { get; set; } = "Your premium shopping destination";
 
         [MaxLength(20)]

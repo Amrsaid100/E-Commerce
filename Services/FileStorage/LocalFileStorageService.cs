@@ -14,15 +14,16 @@ namespace E_Commerce.Services.FileStorage
             "image/png",
             "image/jpeg",
             "image/jpg",
-            "image/svg+xml"
+            "image/svg+xml",
+            "image/webp"
         };
 
         private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".png", ".jpg", ".jpeg", ".svg"
+            ".png", ".jpg", ".jpeg", ".svg", ".webp"
         };
 
-        private const long MaxFileSizeBytes = 2 * 1024 * 1024; // 2 MB
+        private const long MaxFileSizeBytes = 5 * 1024 * 1024; // 5 MB
 
         public LocalFileStorageService(IWebHostEnvironment env, ILogger<LocalFileStorageService> logger)
         {

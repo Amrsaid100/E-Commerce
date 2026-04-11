@@ -1,8 +1,10 @@
 using E_Commerce.Dtos.Helpers;
 using E_Commerce.Dtos.ProductDtos;
+using E_Commerce.Services.FileStorage;
 using E_Commerce.Services.ProductService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace E_Commerce.Controllers
 {
@@ -11,10 +13,12 @@ namespace E_Commerce.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _prodService;
+        private readonly IFileStorageService _fileStorage;
 
-        public ProductController(IProductService prodService)
+        public ProductController(IProductService prodService, IFileStorageService fileStorage)
         {
             _prodService = prodService;
+            _fileStorage = fileStorage;
         }
 
         // GET: /api/product?pageNumber=1&pageSize=12&categoryName=Men&search=shirt
@@ -132,31 +136,67 @@ namespace E_Commerce.Controllers
                     Images = new List<NewProductImageDto>()
                 };
 
-                // Create a single variant from form data
-                var variant = new NewProductVariantDto
+                // Build variants: use VariantsJson (all variants) if provided, else single variant fields
+                if (!string.IsNullOrWhiteSpace(productForm.VariantsJson))
                 {
-                    Price = productForm.VariantPrice > 0 ? productForm.VariantPrice : productForm.Price,
-                    Quantity = productForm.VariantQuantity > 0 ? productForm.VariantQuantity : 10,
-                    Color = productForm.VariantColor ?? "Default",
-                    Size = productForm.VariantSize ?? "One Size"
-                };
-                product.Variants.Add(variant);
+                    try
+                    {
+                        var variantList = JsonSerializer.Deserialize<List<NewProductVariantDto>>(
+                            productForm.VariantsJson,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                // Convert uploaded files to Base64
+                        if (variantList != null && variantList.Any())
+                        {
+                            foreach (var v in variantList)
+                            {
+                                product.Variants.Add(new NewProductVariantDto
+                                {
+                                    Price = v.Price > 0 ? v.Price : productForm.Price,
+                                    Quantity = v.Quantity > 0 ? v.Quantity : 10,
+                                    Color = v.Color ?? "Default",
+                                    Size = v.Size ?? "One Size"
+                                });
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Fallback to single variant if JSON is malformed
+                        product.Variants.Add(new NewProductVariantDto
+                        {
+                            Price = productForm.VariantPrice > 0 ? productForm.VariantPrice : productForm.Price,
+                            Quantity = productForm.VariantQuantity > 0 ? productForm.VariantQuantity : 10,
+                            Color = productForm.VariantColor ?? "Default",
+                            Size = productForm.VariantSize ?? "One Size"
+                        });
+                    }
+                }
+                else
+                {
+                    // Original single-variant path
+                    var variant = new NewProductVariantDto
+                    {
+                        Price = productForm.VariantPrice > 0 ? productForm.VariantPrice : productForm.Price,
+                        Quantity = productForm.VariantQuantity > 0 ? productForm.VariantQuantity : 10,
+                        Color = productForm.VariantColor ?? "Default",
+                        Size = productForm.VariantSize ?? "One Size"
+                    };
+                    product.Variants.Add(variant);
+                }
+
+                // Save uploaded images as files on disk — store URL path, NOT base64
                 if (productForm.Images != null && productForm.Images.Count > 0)
                 {
                     foreach (var file in productForm.Images)
                     {
-                        if (file.Length > 5242880) // 5MB limit
+                        try
                         {
-                            return BadRequest("Image file size exceeds 5MB limit");
+                            var imageUrl = await _fileStorage.SaveFileAsync(file, "products");
+                            product.Images.Add(new NewProductImageDto { ImageData = imageUrl });
                         }
-
-                        using (var ms = new MemoryStream())
+                        catch (ArgumentException imgEx)
                         {
-                            await file.CopyToAsync(ms);
-                            var base64 = "data:" + file.ContentType + ";base64," + Convert.ToBase64String(ms.ToArray());
-                            product.Images.Add(new NewProductImageDto { ImageData = base64 });
+                            return BadRequest(new { message = $"Image error: {imgEx.Message}" });
                         }
                     }
                 }
@@ -225,6 +265,24 @@ namespace E_Commerce.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Error deleting product", error = ex.Message });
+            }
+        }
+
+        // POST: /api/product/migrate-images
+        // One-time admin utility: converts all base64 images stored in DB to files on disk.
+        // Safe to call multiple times (already-migrated images are skipped).
+        [HttpPost("migrate-images")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> MigrateImages()
+        {
+            try
+            {
+                var (converted, failed) = await _prodService.MigrateBase64ImagesToFilesAsync();
+                return Ok(new { message = $"Migration complete.", converted, failed });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Migration failed", error = ex.Message });
             }
         }
     }
